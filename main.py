@@ -236,7 +236,7 @@ def search_modrinth(type=None, version=None, modpack=None):
         if version == "":
             for num, i in enumerate(reversed(vers)):
                 print(f"[{num + 1}] {i}")
-            version = vers[int(input("choose game version -> "))]
+            version = vers[int(input("choose game version -> ")) - 1]
         if "fabric" in v["loaders"] and version in v["game_versions"]:
             file_url = v["files"][0]["url"]
             file_name = v["files"][0]["filename"]
