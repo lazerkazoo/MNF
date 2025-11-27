@@ -254,9 +254,11 @@ def search_modrinth(type=None, version=None, modpack=None):
             if type != "modpack":
                 dir = f"{MC_DIR}/instances/{modpack}/{dirs[type]}/{file_name}"
                 makedirs(abspath(dirname(dir)), exist_ok=True)
+                download_file(file_url, dir)
                 try:
                     if input("another [y/n] -> ") in ["Y", "y", ""]:
                         search_modrinth(type, version, modpack)
+                    exit()
                 except (EOFError, KeyboardInterrupt):
                     print(colored("no input provided, restarting"))
                     main()
@@ -265,8 +267,6 @@ def search_modrinth(type=None, version=None, modpack=None):
                 extract_modpack(f"/tmp/{file_name}")
                 install_modpack()
             break
-
-    exit()
 
 
 def main():
