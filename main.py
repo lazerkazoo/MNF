@@ -1,8 +1,8 @@
 import json
 from datetime import datetime
 from os import listdir, makedirs, rename
-from os.path import expanduser
-from shutil import copy, copytree
+from os.path import dirname, exists, expanduser
+from shutil import copy, copytree, rmtree
 from subprocess import run
 from time import time
 from uuid import uuid4
@@ -17,6 +17,8 @@ session = requests.Session()
 
 
 def download_file(url: str, dest: str, session=session):
+    if not exists(dirname(dest)):
+        makedirs(dirname(dest), exist_ok=True)
     with session.get(url, stream=True) as r:
         r.raise_for_status()
         with open(dest, "wb") as f:
@@ -106,9 +108,8 @@ def install_modpack():
     downloads = {i["downloads"][0]: f"{dir}/{i['path']}" for i in files}
 
     for num, url in enumerate(downloads):
-        if url.endswith(".jar"):
-            print(f"[{num + 1}/{len(downloads)}] downloading {url.split('/')[-1]}")
-            download_file(url, downloads[url])
+        print(f"[{num + 1}/{len(downloads)}] downloading {url.split('/')[-1]}")
+        download_file(url, downloads[url])
 
     print(f"\ndownloaded mods in {round(time() - st, 2)}s!")
 
@@ -135,6 +136,35 @@ def install_modpack():
 
     print(f"Created launcher profile '{name}' ({profile_id})")
     copytree("/tmp/modpack", f"{dir}/mrpack", dirs_exist_ok=True)
+
+
+def remove_modpack():
+    pack = choose_modpack()
+    profiles_file = f"{MC_DIR}/launcher_profiles.json"
+
+    with open(profiles_file, "r") as f:
+        profiles: dict = json.load(f)["profiles"]
+
+    with open(profiles_file, "r") as f:
+        launcher_data = json.load(f)
+
+    profiles = launcher_data.get("profiles", {})
+
+    for i in list(profiles.keys()):
+        if profiles[i]["name"] == pack:
+            profiles.pop(i)
+
+    launcher_data["profiles"] = profiles
+
+    with open(profiles_file, "w") as f:
+        json.dump(launcher_data, f, indent=2)
+
+    for path in [
+        f"{MC_DIR}/instances/{pack}",
+        f"{MC_DIR}/versions/{pack}",
+    ]:
+        if exists(path):
+            rmtree(path)
 
 
 def search_modrinth(type=None, version=None, modpack=None):
@@ -216,7 +246,14 @@ def search_modrinth(type=None, version=None, modpack=None):
 
 
 def main():
-    search_modrinth()
+    options = {"Search Modrinth": search_modrinth, "Remove Modpack": remove_modpack}
+    stuff = []
+    for num, i in enumerate(options):
+        print(f"[{num + 1}] {i}")
+        stuff.append(i)
+
+    choice = int(input("choose -> ")) - 1
+    options[stuff[choice]]()
 
 
 main()
