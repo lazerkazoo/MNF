@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime
 from os import listdir, makedirs, remove, rename
 from os.path import abspath, dirname, exists, expanduser
@@ -18,6 +19,18 @@ MC_DIR = f"{expanduser('~')}/.minecraft"
 session = requests.Session()
 
 
+def remove_old_versions(mods_dir: str, new_filename: str):
+    base = re.split(r"[-_]?\d", new_filename, maxsplit=1)[0]
+
+    for file in listdir(mods_dir):
+        if file == new_filename:
+            continue
+
+        if file.startswith(base):
+            print(colored(f"Removing old version: {file}", "red"))
+            remove(f"{mods_dir}/{file}")
+
+
 def download_file(url: str, dest: str, session=session):
     if not exists(dirname(dest)):
         makedirs(dirname(dest), exist_ok=True)
@@ -29,7 +42,6 @@ def download_file(url: str, dest: str, session=session):
 
 
 def download_depends(file: str, version: str, pack: str):
-    print(colored("downloading dependencies...", "yellow"))
     with ZipFile(file, "r") as z:
         z.extractall("/tmp/mod")
 
@@ -37,6 +49,17 @@ def download_depends(file: str, version: str, pack: str):
         data = json.load(f)
 
     depends = data["depends"]
+    if depends["minecraft"]:
+        depends.pop("minecraft")
+    if depends["fabricloader"]:
+        depends.pop("fabricloader")
+    if depends["java"]:
+        depends.pop("java")
+
+    if len(depends) <= 0:
+        return
+    print(colored("downloading dependencies...", "yellow"))
+
     for dep in depends:
         params = {
             "query": dep,
@@ -53,8 +76,9 @@ def download_depends(file: str, version: str, pack: str):
             if version in v["game_versions"] and "fabric" in v["loaders"]:
                 file_url = v["files"][0]["url"]
                 file_name = v["files"][0]["filename"]
-                dir = f"{MC_DIR}/instances/{pack}/mods/{file_name}"
-                download_file(file_url, dir)
+                mods_dir = f"{MC_DIR}/instances/{pack}/mods"
+                remove_old_versions(mods_dir, file_name)
+                download_file(file_url, f"{mods_dir}/{file_name}")
 
 
 def extract_modpack(file):
@@ -187,6 +211,8 @@ def remove_mod():
     for m in listdir(mods_dir):
         mods.append(m)
 
+    mods.sort()
+
     remove(f"{mods_dir}/{choose(mods)}")
 
     if confirm("another"):
@@ -293,8 +319,10 @@ def search_modrinth(type=None, version=None, modpack=None):
             if type != "modpack":
                 dir = f"{MC_DIR}/instances/{modpack}/{dirs[type]}/{file_name}"
                 makedirs(abspath(dirname(dir)), exist_ok=True)
-                download_file(file_url, dir)
-                download_depends(dir, version, modpack)
+                mods_dir = f"{MC_DIR}/instances/{modpack}/{dirs[type]}"
+                remove_old_versions(mods_dir, file_name)
+                download_file(file_url, f"{mods_dir}/{file_name}")
+                download_depends(f"{mods_dir}/{file_name}", version, modpack)
                 try:
                     if confirm("another"):
                         search_modrinth(type, version, modpack)
