@@ -9,6 +9,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 import requests
+from termcolor import colored
 
 MC_DIR = f"{expanduser('~')}/.minecraft"
 
@@ -37,6 +38,9 @@ def get_modpacks():
 
 def choose_modpack():
     packs = get_modpacks()
+    if len(packs) <= 0:
+        print(colored("no modpacks installed!", "yellow"))
+        main()
     for num, i in enumerate(packs):
         print(f"[{num + 1}] {i}")
 
@@ -108,7 +112,12 @@ def install_modpack():
     downloads = {i["downloads"][0]: f"{dir}/{i['path']}" for i in files}
 
     for num, url in enumerate(downloads):
-        print(f"[{num + 1}/{len(downloads)}] downloading {url.split('/')[-1]}")
+        print(
+            colored(
+                f"[{num + 1}/{len(downloads)}] downloading {url.split('/')[-1]}",
+                "yellow",
+            )
+        )
         download_file(url, downloads[url])
 
     print(f"\ndownloaded mods in {round(time() - st, 2)}s!")
@@ -181,47 +190,53 @@ def search_modrinth(type=None, version=None, modpack=None):
                 )
                 version = file["dependencies"]["minecraft"]
         except (EOFError, ValueError, KeyboardInterrupt):
-            print("No input provided. Exiting.")
-            return
+            print(colored("no input provided, restarting"))
+            main()
     if version is None:
         try:
-            version = input("mc version -> ")
+            version = input("mc version [just press enter to search all versions] -> ")
         except (EOFError, KeyboardInterrupt):
-            print("No input provided. Exiting.")
-            return
-    try:
-        query = input("search modrinth -> ")
-    except (EOFError, KeyboardInterrupt):
-        print("No input provided. Exiting.")
-        return
-    params = {
-        "query": query,
-        "facets": f'[["project_type:{type}"], ["categories:fabric"], ["versions:{version}"]]',
-    }
+            print(colored("no input provided, restarting"))
+            main()
+    query = input("search modrinth -> ")
+    if version == "":
+        params = {
+            "query": query,
+            "facets": f'[["project_type:{type}"], ["categories:fabric"]]',
+        }
+    else:
+        params = {
+            "query": query,
+            "facets": f'[["project_type:{type}"], ["categories:fabric"], ["versions:{version}"]]',
+        }
 
     response = requests.get("https://api.modrinth.com/v2/search", params=params)
     r_data = response.json()
     hits = r_data["hits"]
     if len(hits) <= 0:
-        print(f"no {type}s found")
+        print(colored(f"no {type}s found"), "red")
         search_modrinth(type, version)
 
     for num, hit in enumerate(hits):
         print(f"[{num + 1}] {hit['title']}")
 
-    try:
-        choice = int(input("choose -> ")) - 1
-    except (EOFError, ValueError, KeyboardInterrupt):
-        print("No input provided. Exiting.")
-        return
+    choice = int(input("choose -> ")) - 1
 
     project_id = hits[choice]["project_id"]
 
     versions = requests.get(
         f"https://api.modrinth.com/v2/project/{project_id}/version"
     ).json()
+    vers = []
+    for v in versions:
+        if not v["game_versions"][0] in vers:
+            vers.append(v["game_versions"][0])
 
     for v in versions:
+        if version == "":
+            for num, i in enumerate(reversed(vers)):
+                print(f"[{num + 1}] {i}")
+            version = vers[int(input("choose game version -> "))]
         if "fabric" in v["loaders"] and version in v["game_versions"]:
             file_url = v["files"][0]["url"]
             file_name = v["files"][0]["filename"]
@@ -239,14 +254,14 @@ def search_modrinth(type=None, version=None, modpack=None):
             if input("another [y/n] -> ") in ["Y", "y", ""]:
                 search_modrinth(type, version, modpack)
         except (EOFError, KeyboardInterrupt):
-            print("No input provided. Exiting.")
-            return
+            print(colored("no input provided, restarting"))
+            main()
 
     exit()
 
 
 def main():
-    options = {"Search Modrinth": search_modrinth, "Remove Modpack": remove_modpack}
+    options = {"search modrinth": search_modrinth, "remove modpack": remove_modpack}
     stuff = []
     for num, i in enumerate(options):
         print(f"[{num + 1}] {i}")
