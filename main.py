@@ -15,6 +15,7 @@ from termcolor import colored
 
 HOME = expanduser("~")
 MC_DIR = f"{HOME}/.minecraft"
+DOWNLOADS = f"{HOME}/Downloads"
 
 
 session = requests.Session()
@@ -204,6 +205,14 @@ def install_modpack():
     copytree("/tmp/modpack", f"{dir}/mrpack", dirs_exist_ok=True)
 
 
+def download_modpack():
+    file = choose(list(listdir(DOWNLOADS)), "modpacks downloaded")
+    with ZipFile(f"{DOWNLOADS}/{file}", "r") as z:
+        z.extractall("/tmp/modpack")
+
+    install_modpack()
+
+
 def export_modpack():
     pack = choose(get_modpacks(), "modpack")
     if confirm("copy resource/shader packs"):
@@ -224,11 +233,11 @@ def export_modpack():
         except Exception:
             pass
         make_archive(
-            f"{HOME}/Downloads/{pack}",  # where the zip will be created
+            f"{DOWNLOADS}/{pack}",  # where the zip will be created
             "zip",
             root_dir=f"{MC_DIR}/instances/{pack}/mrpack",
         )
-        rename(f"{HOME}/Downloads/{pack}.zip", f"{HOME}/Downloads/{pack}.mrpack")
+        rename(f"{DOWNLOADS}/{pack}.zip", f"{DOWNLOADS}/{pack}.mrpack")
 
 
 def remove_mod(pack=None):
@@ -403,8 +412,14 @@ def search_modrinth(type=None, version=None, modpack=None):
 
 
 def main():
+    if exists("/tmp/modpack"):
+        rmtree("/tmp/modpack")
+    if exists("/tmp/mod"):
+        rmtree("/tmp/mod")
+
     options = {
         "search modrinth": search_modrinth,
+        "download modpack from file": download_modpack,
         "remove modpack": remove_modpack,
         "remove mod from modpack": remove_mod,
         "export modpack": export_modpack,
