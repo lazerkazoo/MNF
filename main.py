@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from os import listdir, makedirs, rename
-from os.path import dirname, exists, expanduser
+from os.path import abspath, dirname, exists, expanduser
 from shutil import copy, copytree, rmtree
 from subprocess import run
 from time import time
@@ -253,20 +253,18 @@ def search_modrinth(type=None, version=None, modpack=None):
             dir = f"/tmp/{file_name}"
             if type != "modpack":
                 dir = f"{MC_DIR}/instances/{modpack}/{dirs[type]}/{file_name}"
-                makedirs(dir, exist_ok=True)
+                makedirs(abspath(dirname(dir)), exist_ok=True)
+                try:
+                    if input("another [y/n] -> ") in ["Y", "y", ""]:
+                        search_modrinth(type, version, modpack)
+                except (EOFError, KeyboardInterrupt):
+                    print(colored("no input provided, restarting"))
+                    main()
             download_file(file_url, dir)
             if type == "modpack":
                 extract_modpack(f"/tmp/{file_name}")
                 install_modpack()
             break
-
-    if type != "modpack":
-        try:
-            if input("another [y/n] -> ") in ["Y", "y", ""]:
-                search_modrinth(type, version, modpack)
-        except (EOFError, KeyboardInterrupt):
-            print(colored("no input provided, restarting"))
-            main()
 
     exit()
 
