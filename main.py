@@ -1,32 +1,30 @@
 import json
 from datetime import datetime
 from os import listdir, makedirs, remove, rename
-from os.path import abspath, basename, dirname, exists, expanduser
+from os.path import abspath, basename, exists, expanduser
 from shutil import copy, copytree, make_archive, rmtree
 from subprocess import run
 from sys import exit
 from time import time
 from uuid import uuid4
-from zipfile import ZipFile
 
 import requests
 from termcolor import colored
 
+from helper import (
+    choose,
+    confirm,
+    download_file,
+    extract,
+    get_modpacks,
+    get_modrinth_index,
+    load_json,
+    save_json,
+)
+
 HOME = expanduser("~")
 MC_DIR = f"{HOME}/.minecraft"
 DOWNLOADS = f"{HOME}/Downloads"
-
-
-session = requests.Session()
-
-
-def download_file(url: str, dest: str):
-    if not exists(dirname(dest)):
-        makedirs(dirname(dest), exist_ok=True)
-    with session.get(url, stream=True) as r:
-        with open(dest, "wb") as f:
-            for chunk in r.iter_content(1024 * 1024 * 8):
-                f.write(chunk)
 
 
 def download_depends(file: str, version: str, pack: str):
@@ -64,48 +62,10 @@ def download_depends(file: str, version: str, pack: str):
             if version in v["game_versions"] and "fabric" in v["loaders"]:
                 file_url = v["files"][0]["url"]
                 file_name = v["files"][0]["filename"]
+                if file_name in listdir(f"{MC_DIR}/instances/{pack}/mods"):
+                    continue
                 mods_dir = f"{MC_DIR}/instances/{pack}/mods"
                 download_file(file_url, f"{mods_dir}/{file_name}")
-
-
-def extract(file: str, extr_dir: str):
-    if exists(f"/tmp/{extr_dir}"):
-        rmtree(f"/tmp/{extr_dir}")
-    with ZipFile(file, "r") as z:
-        z.extractall(f"/tmp/{extr_dir}")
-
-
-def get_modpacks():
-    return listdir(f"{MC_DIR}/instances")
-
-
-def confirm(txt: str):
-    return input(f"{txt} [y/n] -> ") in ["Y", "y", ""]
-
-
-def choose(lst: list, stuff: str = "stuff"):
-    if len(lst) <= 0:
-        print(colored(f"no {stuff}s installed!", "yellow"))
-        main()
-    for num, i in enumerate(lst):
-        print(f"[{num + 1}] {i}")
-
-    return lst[int(input("choose -> ")) - 1]
-
-
-def save_json(file: str, js):
-    with open(file, "w") as f:
-        json.dump(js, f, indent=2)
-
-
-def load_json(file: str):
-    with open(file, "r") as f:
-        return json.load(f)
-
-
-def get_modrinth_index(folder="/tmp/modpack/"):
-    with open(f"{folder}/modrinth.index.json", "r") as f:
-        return json.load(f)
 
 
 def install_fabric(mc: str, loader: str = ""):
@@ -200,24 +160,30 @@ def install_modpack():
     with open(f"{MC_DIR}/launcher_profiles.json", "w") as f:
         json.dump(launcher_data, f, indent=2)
 
-    print(f"Created launcher profile '{name}' ({profile_id})")
+    print(f"created launcher profile '{name}' ({profile_id})")
     copytree("/tmp/modpack", f"{dir}/mrpack", dirs_exist_ok=True)
 
 
 def update_modpack():
+    st = time()
     pack = choose(get_modpacks(), "modpacks")
     mods_dir = f"{MC_DIR}/instances/{pack}/mods"
     pack_index = get_modrinth_index(f"{MC_DIR}/instances/{pack}/mrpack")
     mc_version = pack_index["dependencies"]["minecraft"]
 
-    for file_entry in pack_index["files"]:
+    for num, file_entry in enumerate(pack_index["files"]):
         if not file_entry["path"].startswith("mods/"):
             continue
 
         mod_url = file_entry["downloads"][0]
         project_id = mod_url.split("/data/")[1].split("/")[0]
 
-        print(colored(f"checking for updates for {file_entry['path']}...", "yellow"))
+        print(
+            colored(
+                f"[{num + 1}/{len(pack_index['files'])}] checking for updates for {file_entry['path']}...",
+                "cyan",
+            )
+        )
 
         versions_response = requests.get(
             f"https://api.modrinth.com/v2/project/{project_id}/version"
@@ -247,7 +213,6 @@ def update_modpack():
         current_sha1 = file_entry["hashes"]["sha1"]
 
         if latest_sha1 == current_sha1:
-            print(colored(f"{file_entry['path']} is already up-to-date.", "green"))
             continue
 
         print(colored(f"updating {file_entry['path']}...", "yellow"))
@@ -268,7 +233,8 @@ def update_modpack():
 
     save_json(f"{MC_DIR}/instances/{pack}/mrpack/modrinth.index.json", pack_index)
 
-    print(colored(f"update complete for {pack}!", "green"))
+    print(colored(f"update complete for {pack}", "green"))
+    print(colored(f"updated in {round(time() - st, 2)}", "green"))
 
 
 def download_modpack():
