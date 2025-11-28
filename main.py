@@ -1,5 +1,4 @@
 import json
-import re
 from datetime import datetime
 from os import listdir, makedirs, remove, rename
 from os.path import abspath, dirname, exists, expanduser
@@ -72,7 +71,7 @@ def download_depends(file: str, version: str, pack: str):
                 download_file(file_url, f"{mods_dir}/{file_name}")
 
 
-def extract_modpack(file):
+def extract_modpack(file: str):
     with ZipFile(file, "r") as z:
         z.extractall("/tmp/modpack")
 
@@ -243,11 +242,13 @@ def remove_mod(pack=None):
     mods_dir = f"{MC_DIR}/instances/{pack}/mods"
     mods = []
 
-    for num, m in enumerate(listdir(mods_dir)):
-        print(f"[{num + 1}] {m}")
+    for m in listdir(mods_dir):
         mods.append(m)
 
     mods.sort()
+    for num, m in enumerate(mods):
+        print(f"[{num + 1}] {m}")
+
     mod = input("choose [can enter name] -> ")
 
     try:
@@ -255,8 +256,8 @@ def remove_mod(pack=None):
         mod = mods[mod]
     except Exception:
         for i in mods:
-            mod = i
             if i.lower().startswith(mod.lower()):
+                mod = i
                 break
 
     if confirm(f"remove {mod}"):
@@ -414,9 +415,9 @@ def main():
 
     options = {
         "search modrinth": search_modrinth,
-        "download modpack from file": download_modpack,
-        "remove modpack": remove_modpack,
         "remove mod from modpack": remove_mod,
+        "remove modpack": remove_modpack,
+        "download modpack from file": download_modpack,
         "export modpack": export_modpack,
     }
 
