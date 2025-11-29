@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from os import listdir, makedirs, rename
-from os.path import dirname, exists, expanduser
+from os.path import dirname, exists
 from shutil import copy, copytree, rmtree
 from subprocess import run
 from time import time
@@ -11,7 +11,7 @@ from zipfile import ZipFile
 import requests
 from termcolor import colored
 
-MC_DIR = f"{expanduser('~')}/.minecraft"
+from constants import MC_DIR
 
 session = requests.session()
 
@@ -30,6 +30,13 @@ def extract(file: str, extr_dir: str):
         rmtree(f"/tmp/{extr_dir}")
     with ZipFile(file, "r") as z:
         z.extractall(f"/tmp/{extr_dir}")
+
+
+def remove_temps():
+    if exists("/tmp/mod"):
+        rmtree("/tmp/mod")
+    if exists("/tmp/modpack"):
+        rmtree("/tmp/modpack")
 
 
 def get_modpacks():
@@ -129,7 +136,6 @@ def install_fabric(mc: str, loader: str = ""):
 
 
 def install_modpack():
-    st = time()
     data = get_modrinth_index()
     depends = data["dependencies"]
     name = data["name"]
@@ -165,6 +171,7 @@ def install_modpack():
 
     downloads = {i["downloads"][0]: f"{dir}/{i['path']}" for i in files}
 
+    st = time()
     for num, url in enumerate(downloads):
         print(
             colored(
@@ -176,8 +183,7 @@ def install_modpack():
 
     print(colored(f"downloaded mods in {round(time() - st, 2)}s!", "green"))
 
-    with open(f"{MC_DIR}/launcher_profiles.json", "r") as f:
-        launcher_data = json.load(f)
+    launcher_data = load_json(f"{MC_DIR}/launcher_profiles.json")
 
     profiles = launcher_data.setdefault("profiles", {})
 
@@ -194,8 +200,7 @@ def install_modpack():
         "gameDir": f"{MC_DIR}/instances/{name}",
     }
 
-    with open(f"{MC_DIR}/launcher_profiles.json", "w") as f:
-        json.dump(launcher_data, f, indent=2)
+    save_json(f"{MC_DIR}/launcher_profiles.json", launcher_data)
 
     print(f"created launcher profile '{name}' ({profile_id})")
     copytree("/tmp/modpack", f"{dir}/mrpack", dirs_exist_ok=True)

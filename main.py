@@ -1,6 +1,6 @@
 import json
 from os import listdir, makedirs, remove, rename
-from os.path import abspath, basename, exists, expanduser
+from os.path import abspath, basename, exists
 from shutil import copytree, make_archive, rmtree
 from sys import exit
 from time import time
@@ -8,6 +8,7 @@ from time import time
 import requests
 from termcolor import colored
 
+from constants import DOWNLOADS, MC_DIR
 from helper import (
     choose,
     confirm,
@@ -18,12 +19,43 @@ from helper import (
     get_modrinth_index,
     install_modpack,
     load_json,
+    remove_temps,
     save_json,
 )
 
-HOME = expanduser("~")
-MC_DIR = f"{HOME}/.minecraft"
-DOWNLOADS = f"{HOME}/Downloads"
+
+def custom_modpack():
+    name = input("name -> ")
+    version = input("minecraft version -> ")
+
+    print(colored(f"gettings latest fabric version for mc {version}", "yellow"))
+    url = f"https://meta.fabricmc.net/v2/versions/loader/{version}"
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        print(colored("error fetching Fabric data.", "red"))
+        return
+
+    data = response.json()
+
+    if not data:
+        print(colored("no Fabric loader found for that version.", "red"))
+        return
+
+    latest_loader = data[0]["loader"]["version"]
+
+    index_data = {
+        "formatVersion": 1,
+        "game": "minecraft",
+        "name": name,
+        "versionId": "1.0",
+        "files": [],
+        "dependencies": {"fabric-loader": latest_loader, "minecraft": version},
+    }
+    makedirs("/tmp/modpack/overrides/config")
+    save_json("/tmp/modpack/modrinth.index.json", index_data)
+
+    install_modpack()
 
 
 def update_modpack():
@@ -199,11 +231,7 @@ def remove_modpack():
 
 
 def search_modrinth(type=None, version=None, modpack=None):
-    if exists("/tmp/mod"):
-        rmtree("/tmp/mod")
-    if exists("/tmp/modpack"):
-        rmtree("/tmp/modpack")
-
+    remove_temps()
     if type is None:
         types = ["mod", "modpack", "resourcepack", "shader"]
         type = choose(types)
@@ -310,17 +338,15 @@ def search_modrinth(type=None, version=None, modpack=None):
 
 
 def main():
-    if exists("/tmp/modpack"):
-        rmtree("/tmp/modpack")
-    if exists("/tmp/mod"):
-        rmtree("/tmp/mod")
+    remove_temps()
 
     options = {
         "search modrinth": search_modrinth,
-        "update modpack mods": update_modpack,
         "remove mod from modpack": remove_mod,
+        "update modpack mods": update_modpack,
         "remove modpack": remove_modpack,
         "download modpack from file": download_modpack,
+        "create custom modpack": custom_modpack,
         "export modpack": export_modpack,
     }
 
