@@ -105,6 +105,8 @@ def download_depends(file: str, version: str, pack: str):
         response = requests.get("https://api.modrinth.com/v2/search", params=params)
         r_data = response.json()
         hits = r_data["hits"]
+        if hits[0]["slug"] != dep:
+            continue
         project_id = hits[0]["project_id"]
         versions = requests.get(
             f"https://api.modrinth.com/v2/project/{project_id}/version"
@@ -145,6 +147,7 @@ def install_fabric(mc: str, loader: str = ""):
 
 
 def install_modpack():
+    st = time()
     data = get_modrinth_index()
     depends = data["dependencies"]
     name = data["name"]
@@ -178,7 +181,6 @@ def install_modpack():
 
     downloads = {i["downloads"][0]: f"{dir}/{i['path']}" for i in files}
 
-    st = time()
     for num, url in enumerate(downloads):
         print(
             colored(
@@ -187,8 +189,6 @@ def install_modpack():
             )
         )
         download_file(url, downloads[url])
-
-    print(colored(f"downloaded mods in {round(time() - st, 2)}s!", "green"))
 
     launcher_data = load_json(f"{MC_DIR}/launcher_profiles.json")
 
@@ -209,5 +209,5 @@ def install_modpack():
 
     save_json(f"{MC_DIR}/launcher_profiles.json", launcher_data)
 
-    print(f"created launcher profile '{name}' ({profile_id})")
+    print(f"created launcher profile '{name}' in {time() - st}")
     copytree("/tmp/modpack", f"{dir}/mrpack", dirs_exist_ok=True)

@@ -345,14 +345,20 @@ def main():
     options = {
         "search modrinth": search_modrinth,
         "remove mod from modpack": remove_mod,
-        "update modpack mods": update_modpack,
-        "remove modpack": remove_modpack,
-        "download modpack from file": download_modpack,
-        "create custom modpack": custom_modpack,
-        "export modpack": export_modpack,
+        "modpack": {
+            "update modpack mods": update_modpack,
+            "create custom modpack": custom_modpack,
+            "download modpack from file": download_modpack,
+            "remove modpack": remove_modpack,
+            "export modpack": export_modpack,
+        },
     }
 
-    options[choose(list(options.keys()))]()
+    choice = options[choose(list(options.keys()))]
+    if isinstance(choice, dict):
+        choice[choose(list(choice.keys()))]()
+    else:
+        choice()
 
     if confirm("do other stuff"):
         main()
