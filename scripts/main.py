@@ -2,14 +2,13 @@ import json
 from os import listdir, makedirs, remove, rename
 from os.path import abspath, basename, exists
 from shutil import copytree, make_archive, rmtree
-from sys import exit
 from time import time
 
 import requests
 from termcolor import colored
 
-from constants import DOWNLOADS, MC_DIR
-from helper import (
+from scripts.constants import DOWNLOADS, MC_DIR
+from scripts.helper import (
     choose,
     confirm,
     download_depends,
@@ -339,6 +338,9 @@ def search_modrinth(type=None, version=None, modpack=None):
 
 def main():
     remove_temps()
+    if MC_DIR == "":
+        print(colored("minecraft is not installed", "red"))
+        exit()
 
     options = {
         "search modrinth": search_modrinth,

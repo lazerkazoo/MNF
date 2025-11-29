@@ -11,7 +11,7 @@ from zipfile import ZipFile
 import requests
 from termcolor import colored
 
-from constants import MC_DIR
+from scripts.constants import MC_DIR
 
 session = requests.session()
 
@@ -40,7 +40,9 @@ def remove_temps():
 
 
 def get_modpacks():
-    return listdir(f"{MC_DIR}/instances")
+    if exists(f"{MC_DIR}/instances"):
+        return listdir(f"{MC_DIR}/instances")
+    return []
 
 
 def confirm(txt: str):
@@ -50,6 +52,8 @@ def confirm(txt: str):
 def choose(lst: list, stuff: str = "stuff"):
     if len(lst) <= 0:
         print(colored(f"no {stuff}s installed!", "yellow"))
+        exit()
+        return
     for num, i in enumerate(lst):
         print(f"[{num + 1}] {i}")
 
@@ -126,6 +130,8 @@ def install_fabric(mc: str, loader: str = ""):
         "client",
         "-mcversion",
         mc,
+        "-dir",
+        MC_DIR,
         "-noprofile",
     ]
 
