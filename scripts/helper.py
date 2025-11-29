@@ -78,7 +78,7 @@ def get_mrpack(pack: str):
     return f"{INST_DIR}/{pack}/mrpack"
 
 
-def get_modrinth_index(folder="/tmp/modpack/"):
+def get_modrinth_index(folder="/tmp/modpack"):
     return load_json(f"{folder}/modrinth.index.json")
 
 

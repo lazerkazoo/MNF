@@ -1,7 +1,7 @@
 import json
 from os import listdir, makedirs, remove, rename
 from os.path import abspath, basename, exists
-from shutil import copytree, make_archive, rmtree
+from shutil import copy, copytree, make_archive, rmtree
 from time import sleep, time
 
 import requests
@@ -180,12 +180,13 @@ def download_modpack():
 
 
 def export_modpack():
+    remove_temps()
     pack = choose(get_modpacks(), "modpack")
     if confirm("copy resource/shader packs"):
         try:
             copytree(
                 f"{INST_DIR}/{pack}/resourcepacks",
-                f"{get_mrpack(pack)}/overrides",
+                "/tmp/modpack/overrides/resourcepacks",
                 dirs_exist_ok=True,
             )
         except Exception:
@@ -193,17 +194,18 @@ def export_modpack():
         try:
             copytree(
                 f"{INST_DIR}/{pack}/shaderpacks",
-                f"{get_mrpack(pack)}/overrides",
+                "/tmp/modpack/overrides/shaderpacks",
                 dirs_exist_ok=True,
             )
         except Exception:
             pass
-        make_archive(
-            f"{DOWNLOADS}/{pack}",  # where the zip will be created
-            "zip",
-            root_dir=f"{get_mrpack(pack)}",
-        )
-        rename(f"{DOWNLOADS}/{pack}.zip", f"{DOWNLOADS}/{pack}.mrpack")
+    copy(f"{get_mrpack(pack)}/modrinth.index.json", "/tmp/modpack")
+    make_archive(
+        f"{DOWNLOADS}/{pack}",  # where the zip will be created
+        "zip",
+        root_dir="/tmp/modpack",
+    )
+    rename(f"{DOWNLOADS}/{pack}.zip", f"{DOWNLOADS}/{pack}.mrpack")
 
 
 def remove_mod(pack=None):
@@ -341,7 +343,7 @@ def search_modrinth(type=None, version=None, modpack=None):
             }
 
             if type != "modpack":
-                index_file = get_modrinth_index(f"{get_mrpack(modpack)}/")
+                index_file = get_modrinth_index(get_mrpack(modpack))
                 type_dir = f"{INST_DIR}/{modpack}/{dirs[type]}"
                 target = f"{type_dir}/{file_name}"
 
@@ -374,7 +376,8 @@ def search_modrinth(type=None, version=None, modpack=None):
                 )
 
                 if confirm("another"):
-                    return search_modrinth(type, version, modpack)
+                    search_modrinth(type, version, modpack)
+                return
 
             # MODPACK INSTALLATION
             tmp_path = f"/tmp/{file_name}"
