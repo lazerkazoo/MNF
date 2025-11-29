@@ -320,7 +320,7 @@ def search_modrinth(type=None, version=None, modpack=None):
                 index_file["files"].append(new_entry)
 
                 save_json(
-                    f"{get_mrpack(modpack)}/mrpack/modrinth.index.json",
+                    f"{get_mrpack(modpack)}/modrinth.index.json",
                     index_file,
                 )
 
