@@ -252,7 +252,7 @@ def remove_mod(pack=None):
         remove_mod(pack)
 
 
-def remove_modpack(pack: None):
+def remove_modpack(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
     profiles_file = f"{MC_DIR}/launcher_profiles.json"
