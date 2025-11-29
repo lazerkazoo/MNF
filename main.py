@@ -1,12 +1,9 @@
 import json
-from datetime import datetime
 from os import listdir, makedirs, remove, rename
 from os.path import abspath, basename, exists, expanduser
-from shutil import copy, copytree, make_archive, rmtree
-from subprocess import run
+from shutil import copytree, make_archive, rmtree
 from sys import exit
 from time import time
-from uuid import uuid4
 
 import requests
 from termcolor import colored
@@ -14,10 +11,12 @@ from termcolor import colored
 from helper import (
     choose,
     confirm,
+    download_depends,
     download_file,
     extract,
     get_modpacks,
     get_modrinth_index,
+    install_modpack,
     load_json,
     save_json,
 )
@@ -25,143 +24,6 @@ from helper import (
 HOME = expanduser("~")
 MC_DIR = f"{HOME}/.minecraft"
 DOWNLOADS = f"{HOME}/Downloads"
-
-
-def download_depends(file: str, version: str, pack: str):
-    extract(file, "mod")
-
-    data = load_json("/tmp/mod/fabric.mod.json")
-
-    depends = data["depends"]
-    if "minecraft" in depends:
-        depends.pop("minecraft")
-    if "fabricloader" in depends:
-        depends.pop("fabricloader")
-    if "fabric-api" in depends:
-        depends.pop("fabric-api")
-    if "java" in depends:
-        depends.pop("java")
-
-    if len(depends) <= 0:
-        return
-    print(colored("downloading dependencies...", "yellow"))
-
-    for dep in depends:
-        params = {
-            "query": dep,
-            "facets": f'[["project_type:mod"], ["categories:fabric"], ["versions:{version}"]]',
-        }
-        response = requests.get("https://api.modrinth.com/v2/search", params=params)
-        r_data = response.json()
-        hits = r_data["hits"]
-        project_id = hits[0]["project_id"]
-        versions = requests.get(
-            f"https://api.modrinth.com/v2/project/{project_id}/version"
-        ).json()
-        for v in versions:
-            if version in v["game_versions"] and "fabric" in v["loaders"]:
-                file_url = v["files"][0]["url"]
-                file_name = v["files"][0]["filename"]
-                if file_name in listdir(f"{MC_DIR}/instances/{pack}/mods"):
-                    continue
-                mods_dir = f"{MC_DIR}/instances/{pack}/mods"
-                download_file(file_url, f"{mods_dir}/{file_name}")
-
-
-def install_fabric(mc: str, loader: str = ""):
-    print("installing fabric...")
-    download_file(
-        "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.0/fabric-installer-1.1.0.jar",
-        "/tmp/fabric-installer.jar",
-    )
-
-    cmd = [
-        "java",
-        "-jar",
-        "/tmp/fabric-installer.jar",
-        "client",
-        "-mcversion",
-        mc,
-        "-noprofile",
-    ]
-
-    if loader != "":
-        cmd.extend(["-loader", loader])
-
-    run(cmd)
-
-
-def install_modpack():
-    st = time()
-    data = get_modrinth_index()
-    depends = data["dependencies"]
-    name = data["name"]
-    files = data["files"]
-    dir = f"{MC_DIR}/instances/{name}"
-    copytree(
-        "/tmp/modpack/overrides/", f"{MC_DIR}/instances/{name}/", dirs_exist_ok=True
-    )
-    makedirs(f"{dir}/mods", exist_ok=True)
-
-    install_fabric(depends["minecraft"], depends["fabric-loader"])
-    copytree(
-        f"{MC_DIR}/versions/fabric-loader-{depends['fabric-loader']}-{depends['minecraft']}",
-        f"{MC_DIR}/versions/{name}",
-        dirs_exist_ok=True,
-    )
-    rename(
-        f"{MC_DIR}/versions/{name}/fabric-loader-{depends['fabric-loader']}-{depends['minecraft']}.json",
-        f"{MC_DIR}/versions/{name}/{name}.json",
-    )
-
-    copy(
-        f"{MC_DIR}/libraries/net/fabricmc/intermediary/{depends['minecraft']}/intermediary-{depends['minecraft']}.jar",
-        f"{MC_DIR}/versions/{name}/{name}.jar",
-    )
-
-    # Update the JSON to have correct id
-    with open(f"{MC_DIR}/versions/{name}/{name}.json", "r") as f:
-        version_data = json.load(f)
-    version_data["id"] = name
-    with open(f"{MC_DIR}/versions/{name}/{name}.json", "w") as f:
-        json.dump(version_data, f, indent=2)
-
-    downloads = {i["downloads"][0]: f"{dir}/{i['path']}" for i in files}
-
-    for num, url in enumerate(downloads):
-        print(
-            colored(
-                f"[{num + 1}/{len(downloads)}] downloading {url.split('/')[-1]}",
-                "yellow",
-            )
-        )
-        download_file(url, downloads[url])
-
-    print(colored(f"downloaded mods in {round(time() - st, 2)}s!", "green"))
-
-    with open(f"{MC_DIR}/launcher_profiles.json", "r") as f:
-        launcher_data = json.load(f)
-
-    profiles = launcher_data.setdefault("profiles", {})
-
-    profile_id = uuid4().hex  # UUID as json-safe string
-    timestamp = datetime.utcnow().isoformat() + "Z"
-
-    profiles[profile_id] = {
-        "created": timestamp,
-        "lastUsed": timestamp,
-        "icon": "Grass",
-        "name": name,
-        "type": "custom",
-        "lastVersionId": name,
-        "gameDir": f"{MC_DIR}/instances/{name}",
-    }
-
-    with open(f"{MC_DIR}/launcher_profiles.json", "w") as f:
-        json.dump(launcher_data, f, indent=2)
-
-    print(f"created launcher profile '{name}' ({profile_id})")
-    copytree("/tmp/modpack", f"{dir}/mrpack", dirs_exist_ok=True)
 
 
 def update_modpack():
@@ -463,6 +325,9 @@ def main():
     }
 
     options[choose(list(options.keys()))]()
+
+    if confirm("do other stuff"):
+        main()
 
 
 main()
