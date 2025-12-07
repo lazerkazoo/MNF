@@ -7,12 +7,13 @@ from time import sleep, time
 import requests
 from termcolor import colored
 
-from scripts.constants import DOWNLOADS, INST_DIR, MC_DIR
+from scripts.constants import DIRS, DOWNLOADS, INST_DIR, MC_DIR, MUST_HAVES
 from scripts.helper import (
     choose,
     confirm,
     download_depends,
     download_file,
+    download_first_from_modrinth,
     extract,
     get_modpacks,
     get_modrinth_index,
@@ -38,7 +39,7 @@ def change_modpack_ver():
     remove_modpack(pack)
 
     install_modpack()
-    update_modpack(pack)
+    update_modpack_mods(pack)
 
 
 def custom_modpack():
@@ -74,8 +75,21 @@ def custom_modpack():
 
     install_modpack()
 
+    download_first_from_modrinth(name, "fabric api", "mod")
 
-def update_modpack(pack=None):
+    if confirm("download must-haves"):
+        st = time()
+        for i in MUST_HAVES:
+            for j in MUST_HAVES[i]:
+                try:
+                    print(colored(f"[{i}] downloading {j}", "yellow"))
+                    download_first_from_modrinth(name, j, i)
+                except Exception:
+                    print(colored("something went wrong!", "red"))
+        print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
+
+
+def update_modpack_mods(pack=None):
     st = time()
     if pack is None:
         pack = choose(get_modpacks(), "modpacks")
@@ -180,7 +194,6 @@ def download_modpack():
 
 
 def export_modpack():
-    remove_temps()
     pack = choose(get_modpacks(), "modpack")
     if confirm("copy resource/shader packs"):
         try:
@@ -203,7 +216,7 @@ def export_modpack():
     make_archive(
         f"{DOWNLOADS}/{pack}",  # where the zip will be created
         "zip",
-        root_dir="/tmp/modpack",
+        root_dir="/tmp/modpack",  # what 2 zip
     )
     rename(f"{DOWNLOADS}/{pack}.zip", f"{DOWNLOADS}/{pack}.mrpack")
 
@@ -331,30 +344,67 @@ def search_modrinth(type=None, version=None, modpack=None):
     if version == "":
         version = choose(list(reversed(all_versions)), "version")
 
+    if type not in ["mod", "modpack"]:
+        for v in versions:
+            file_info = v["files"][0]
+            file_url = file_info["url"]
+            file_name = file_info["filename"]
+            index_file = get_modrinth_index(get_mrpack(modpack))
+            type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
+            makedirs(abspath(type_dir), exist_ok=True)
+            target = f"{type_dir}/{file_name}"
+
+            print(colored(f"downloading {file_name}...", "yellow"))
+            download_file(file_url, target)
+
+            if type == "mod":
+                download_depends(target, version, modpack)
+            new_entry = {
+                "path": f"{DIRS[type]}/{file_name}",
+                "hashes": {
+                    "sha1": v["files"][0]["hashes"]["sha1"],
+                    "sha512": v["files"][0]["hashes"].get("sha512", ""),
+                },
+                "downloads": [file_url],
+                "fileSize": v["files"][0]["size"],
+            }
+            index_file["files"] = [
+                f
+                for f in index_file["files"]
+                if f["path"].lower() != new_entry["path"].lower()
+            ]
+
+            index_file["files"].append(new_entry)
+
+            save_json(
+                f"{get_mrpack(modpack)}/modrinth.index.json",
+                index_file,
+            )
+
+            if confirm("another"):
+                search_modrinth(type, version, modpack)
+            break
+        return
+
     for v in versions:
         if version in v["game_versions"] and "fabric" in v["loaders"]:
             file_info = v["files"][0]
             file_url = file_info["url"]
             file_name = file_info["filename"]
-            dirs = {
-                "mod": "mods",
-                "resourcepack": "resourcepacks",
-                "shader": "shaderpacks",
-            }
 
             if type != "modpack":
                 index_file = get_modrinth_index(get_mrpack(modpack))
-                type_dir = f"{INST_DIR}/{modpack}/{dirs[type]}"
-                target = f"{type_dir}/{file_name}"
-
+                type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
                 makedirs(abspath(type_dir), exist_ok=True)
+                target = f"{type_dir}/{file_name}"
 
                 print(colored(f"downloading {file_name}...", "yellow"))
                 download_file(file_url, target)
 
-                download_depends(target, version, modpack)
+                if type == "mod":
+                    download_depends(target, version, modpack)
                 new_entry = {
-                    "path": f"{dirs[type]}/{file_name}",
+                    "path": f"{DIRS[type]}/{file_name}",
                     "hashes": {
                         "sha1": v["files"][0]["hashes"]["sha1"],
                         "sha512": v["files"][0]["hashes"].get("sha512", ""),
@@ -377,7 +427,7 @@ def search_modrinth(type=None, version=None, modpack=None):
 
                 if confirm("another"):
                     search_modrinth(type, version, modpack)
-                return
+                break
 
             # MODPACK INSTALLATION
             tmp_path = f"/tmp/{file_name}"
@@ -385,7 +435,7 @@ def search_modrinth(type=None, version=None, modpack=None):
 
             extract(tmp_path, "modpack")
             install_modpack()
-            return
+            break
 
 
 def main():
@@ -397,7 +447,7 @@ def main():
     options = {
         "search modrinth": search_modrinth,
         "remove mod from modpack": remove_mod,
-        "update modpack mods": update_modpack,
+        "update modpack mods": update_modpack_mods,
         "modpack": {
             "create custom modpack": custom_modpack,
             "download modpack from file": download_modpack,

@@ -11,18 +11,102 @@ from zipfile import ZipFile
 import requests
 from termcolor import colored
 
-from scripts.constants import INST_DIR, MC_DIR
+from scripts.constants import DIRS, INST_DIR, MC_DIR
 
 session = requests.session()
 
 
 def download_file(url: str, dest: str):
-    if not exists(dirname(dest)):
-        makedirs(dirname(dest), exist_ok=True)
+    makedirs(dirname(dest), exist_ok=True)
     with session.get(url, stream=True) as r:
         with open(dest, "wb") as f:
             for chunk in r.iter_content(1024 * 1024 * 8):
                 f.write(chunk)
+
+
+def download_first_from_modrinth(pack: str, query: str, type: str):
+    index = get_modrinth_index(get_mrpack(pack))
+    depends = index["dependencies"]
+    version = depends["minecraft"]
+    facets = [
+        [f"project_type:{type}"],
+    ]
+    if type == "mod":
+        facets.append(["categories:fabric"])
+    if type not in ["resourcepack", "shader"]:
+        facets.append([f"versions:{version}"])
+    params = {
+        "query": query,
+        "facets": json.dumps(facets),
+    }
+    response = session.get("https://api.modrinth.com/v2/search", params=params)
+    hits = response.json().get("hits", [])
+
+    if not hits:
+        return
+
+    project_id = hits[0]["project_id"]
+
+    versions = session.get(
+        f"https://api.modrinth.com/v2/project/{project_id}/version"
+    ).json()
+
+    if type != "mod":
+        for v in versions:
+            file_url = v["files"][0]["url"]
+            file_name = v["files"][0]["filename"]
+            new_entry = {
+                "path": f"{DIRS[type]}/{file_name}",
+                "hashes": {
+                    "sha1": v["files"][0]["hashes"]["sha1"],
+                    "sha512": v["files"][0]["hashes"].get("sha512", ""),
+                },
+                "downloads": [file_url],
+                "fileSize": v["files"][0]["size"],
+            }
+            index["files"] = [
+                f
+                for f in index["files"]
+                if f["path"].lower() != new_entry["path"].lower()
+            ]
+
+            index["files"].append(new_entry)
+
+            save_json(
+                f"{get_mrpack(pack)}/modrinth.index.json",
+                index,
+            )
+            download_file(file_url, f"{INST_DIR}/{pack}/{DIRS[type]}/{file_name}")
+            break
+        return
+
+    for v in versions:
+        if version in v["game_versions"] and "fabric" in v["loaders"]:
+            file_url = v["files"][0]["url"]
+            file_name = v["files"][0]["filename"]
+            new_entry = {
+                "path": f"{DIRS[type]}/{file_name}",
+                "hashes": {
+                    "sha1": v["files"][0]["hashes"]["sha1"],
+                    "sha512": v["files"][0]["hashes"].get("sha512", ""),
+                },
+                "downloads": [file_url],
+                "fileSize": v["files"][0]["size"],
+            }
+            index["files"] = [
+                f
+                for f in index["files"]
+                if f["path"].lower() != new_entry["path"].lower()
+            ]
+
+            index["files"].append(new_entry)
+
+            save_json(
+                f"{get_mrpack(pack)}/modrinth.index.json",
+                index,
+            )
+            download_file(file_url, f"{INST_DIR}/{pack}/{DIRS[type]}/{file_name}")
+            break
 
 
 def extract(file: str, extr_dir: str):
@@ -37,6 +121,8 @@ def remove_temps():
         rmtree("/tmp/mod")
     if exists("/tmp/modpack"):
         rmtree("/tmp/modpack")
+    if exists("/tmp/worlds"):
+        rmtree("/tmp/worlds")
 
 
 def get_modpacks():
