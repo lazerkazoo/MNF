@@ -33,7 +33,16 @@ def download_musthaves(pack=None):
             for j in must_haves[i]:
                 try:
                     print(colored(f"[{i}] downloading {j}", "yellow"))
-                    download_first_from_modrinth(pack, j, i)
+                    file_name = download_first_from_modrinth(pack, j, i)["file"]
+                    file_path = f"{INST_DIR}/{pack}/{DIRS[i]}/{file_name}"
+                    if file_path.endswith(".jar"):
+                        download_depends(
+                            file_path,
+                            get_modrinth_index(get_mrpack(pack))["dependencies"][
+                                "minecraft"
+                            ],
+                            pack,
+                        )
                 except Exception:
                     print(colored("something went wrong!", "red"))
         print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
@@ -92,8 +101,7 @@ def download_first_from_modrinth(pack: str, query: str, type: str):
                 index,
             )
             download_file(file_url, f"{INST_DIR}/{pack}/{DIRS[type]}/{file_name}")
-            break
-        return
+            return {"file": file_name, "url": file_url}
 
     for v in versions:
         if version in v["game_versions"] and "fabric" in v["loaders"]:
@@ -121,7 +129,7 @@ def download_first_from_modrinth(pack: str, query: str, type: str):
                 index,
             )
             download_file(file_url, f"{INST_DIR}/{pack}/{DIRS[type]}/{file_name}")
-            break
+            return {"file": file_name, "url": file_url}
 
 
 def extract(file: str, extr_dir: str):

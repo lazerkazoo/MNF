@@ -1,33 +1,25 @@
 {
   "mod": [
     "sodium",
+    "sodium-extras",
     "reese's sodium options",
     "lithium",
     "entity culling",
-    "ferritecore",
     "more culling",
-    "iris",
+    "ferritecore",
     "zoomify",
     "appleskin",
-    "3d skin layers",
     "mouse tweaks",
     "model gap fix",
-    "fabric language kotlin",
     "lamb dynamic lights",
-    "modmenu",
     "betterf3",
-    "resourceful config"
+    "modmenu"
   ],
   "resourcepack": [
     "motschen's better leaves",
     "low fire",
     "bee's fancy crops",
-    "even better enchants",
-    "mandala's gui",
     "outline ores"
   ],
-  "shader": [
-    "complementary shaders - reimagined",
-    "miniature"
-  ]
+  "shader": []
 }
