@@ -7,13 +7,14 @@ from time import sleep, time
 import requests
 from termcolor import colored
 
-from scripts.constants import DIRS, DOWNLOADS, INST_DIR, MC_DIR, MUST_HAVES
+from scripts.constants import DIRS, DOWNLOADS, INST_DIR, MC_DIR
 from scripts.helper import (
     choose,
     confirm,
     download_depends,
     download_file,
     download_first_from_modrinth,
+    download_musthaves,
     extract,
     get_modpacks,
     get_modrinth_index,
@@ -23,6 +24,29 @@ from scripts.helper import (
     remove_temps,
     save_json,
 )
+
+
+def edit_musthaves(todo=None, to_edit=None):
+    file = load_json("data/must-haves.json")
+    if todo is None:
+        todo = choose(["add", "remove"])
+    if to_edit is None:
+        to_edit = choose(["mod", "resourcepack", "shader"])
+    stuff = file[to_edit]
+    if todo == "remove":
+        to_remove = choose(stuff)
+        stuff.remove(to_remove)
+    elif todo == "add":
+        to_add = input("type name what to add -> ")
+        if to_add in stuff:
+            print(colored("already in must-haves!", "red"))
+            return
+        stuff.append(to_add)
+
+    file[to_edit] = stuff
+    save_json("data/must-haves.json", file)
+    if confirm("another"):
+        edit_musthaves(todo, to_edit)
 
 
 def change_modpack_ver():
@@ -77,16 +101,7 @@ def custom_modpack():
 
     download_first_from_modrinth(name, "fabric api", "mod")
 
-    if confirm("download must-haves"):
-        st = time()
-        for i in MUST_HAVES:
-            for j in MUST_HAVES[i]:
-                try:
-                    print(colored(f"[{i}] downloading {j}", "yellow"))
-                    download_first_from_modrinth(name, j, i)
-                except Exception:
-                    print(colored("something went wrong!", "red"))
-        print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
+    download_musthaves(name)
 
 
 def update_modpack_mods(pack=None):
@@ -434,7 +449,9 @@ def search_modrinth(type=None, version=None, modpack=None):
             download_file(file_url, tmp_path)
 
             extract(tmp_path, "modpack")
+            modpack = get_modrinth_index()["name"]
             install_modpack()
+            download_musthaves(modpack)
             break
 
 
@@ -446,15 +463,16 @@ def main():
 
     options = {
         "search modrinth": search_modrinth,
-        "remove mod from modpack": remove_mod,
-        "update modpack mods": update_modpack_mods,
         "modpack": {
             "create custom modpack": custom_modpack,
+            "update modpack mods": update_modpack_mods,
+            "remove mod from modpack": remove_mod,
             "download modpack from file": download_modpack,
             "change version of modpack": change_modpack_ver,
             "remove modpack": remove_modpack,
             "export modpack": export_modpack,
         },
+        "edit must-haves": edit_musthaves,
     }
 
     choice = choose(list(options.keys()))

@@ -1,3 +1,4 @@
+from json import load
 from os.path import exists, expanduser
 
 HOME = expanduser("~")
@@ -16,32 +17,5 @@ DIRS = {
     "shader": "shaderpacks",
 }
 
-MUST_HAVES = {
-    "mod": [
-        "sodium",
-        "reese's sodium options",
-        "lithium",
-        "entity culling",
-        "ferritecore",
-        "more culling",
-        "iris",
-        "zoomify",
-        "appleskin",
-        "3d skin layers",
-        "mouse tweaks",
-        "model gap fix",
-        "fabric language kotlin",
-        "lamb dynamic lights",
-        "modmenu",
-    ],
-    "resourcepack": [
-        "fresh animations",
-        "fresh moves",
-        "motschen's better leaves",
-        "low fire",
-        "bee's fancy crops",
-        "enhanced boss bars",
-        "even better enchants",
-    ],
-    "shader": ["complementary shaders - reimagined", "miniature", "pastel"],
-}
+with open("data/must-haves.json", "r") as f:
+    must_haves = load(f)

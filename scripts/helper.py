@@ -11,7 +11,7 @@ from zipfile import ZipFile
 import requests
 from termcolor import colored
 
-from scripts.constants import DIRS, INST_DIR, MC_DIR
+from scripts.constants import DIRS, INST_DIR, MC_DIR, must_haves
 
 session = requests.session()
 
@@ -22,6 +22,21 @@ def download_file(url: str, dest: str):
         with open(dest, "wb") as f:
             for chunk in r.iter_content(1024 * 1024 * 8):
                 f.write(chunk)
+
+
+def download_musthaves(pack=None):
+    if pack is None:
+        pack = choose(get_modpacks(), "modpack")
+    if confirm("download must-haves"):
+        st = time()
+        for i in must_haves:
+            for j in must_haves[i]:
+                try:
+                    print(colored(f"[{i}] downloading {j}", "yellow"))
+                    download_first_from_modrinth(pack, j, i)
+                except Exception:
+                    print(colored("something went wrong!", "red"))
+        print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
 
 def download_first_from_modrinth(pack: str, query: str, type: str):
