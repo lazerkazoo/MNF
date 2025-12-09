@@ -154,7 +154,7 @@ def get_modpacks():
     return []
 
 
-def confirm(txt: str):
+def confirm(txt="r u sure"):
     return input(f"{txt} [y/n] -> ") in ["Y", "y", ""]
 
 
@@ -201,6 +201,8 @@ def download_depends(file: str, version: str, pack: str):
         depends.pop("minecraft")
     if "java" in depends:
         depends.pop("java")
+    if "sodium" in depends:
+        depends.pop("sodium")
 
     for i in list(depends):
         if i.startswith("fabric"):
@@ -215,13 +217,13 @@ def download_depends(file: str, version: str, pack: str):
             "query": dep,
             "facets": f'[["project_type:mod"], ["categories:fabric"], ["versions:{version}"]]',
         }
-        response = requests.get("https://api.modrinth.com/v2/search", params=params)
+        response = session.get("https://api.modrinth.com/v2/search", params=params)
         r_data = response.json()
         hits = r_data["hits"]
         if hits[0]["slug"] != dep:
             continue
         project_id = hits[0]["project_id"]
-        versions = requests.get(
+        versions = session.get(
             f"https://api.modrinth.com/v2/project/{project_id}/version"
         ).json()
         for v in versions:

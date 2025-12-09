@@ -25,6 +25,8 @@ from scripts.helper import (
     save_json,
 )
 
+session = requests.session()
+
 
 def edit_musthaves(todo=None, to_edit=None):
     file = load_json("data/must-haves.json")
@@ -72,7 +74,7 @@ def custom_modpack():
 
     print(colored(f"gettings latest fabric version for mc {version}", "yellow"))
     url = f"https://meta.fabricmc.net/v2/versions/loader/{version}"
-    response = requests.get(url)
+    response = session.get(url)
 
     if response.status_code != 200:
         print(colored("error fetching Fabric data.", "red"))
@@ -138,7 +140,7 @@ def update_modpack_mods(pack=None):
             )
         )
 
-        versions_response = requests.get(
+        versions_response = session.get(
             f"https://api.modrinth.com/v2/project/{project_id}/version"
         )
         if not versions_response.ok:
@@ -299,14 +301,14 @@ def remove_modpack(pack=None):
 
     launcher_data["profiles"] = profiles
 
-    save_json(profiles_file, launcher_data)
-
-    for path in [
-        f"{INST_DIR}/{pack}",
-        f"{MC_DIR}/versions/{pack}",
-    ]:
-        if exists(path):
-            rmtree(path)
+    if confirm("r u sure"):
+        save_json(profiles_file, launcher_data)
+        for path in [
+            f"{INST_DIR}/{pack}",
+            f"{MC_DIR}/versions/{pack}",
+        ]:
+            if exists(path):
+                rmtree(path)
 
 
 def search_modrinth(type=None, version=None, modpack=None):
@@ -335,7 +337,7 @@ def search_modrinth(type=None, version=None, modpack=None):
 
     params = {"query": query, "facets": json.dumps(base_facets)}
 
-    response = requests.get("https://api.modrinth.com/v2/search", params=params)
+    response = session.get("https://api.modrinth.com/v2/search", params=params)
     hits = response.json().get("hits", [])
 
     if not hits:
@@ -348,7 +350,7 @@ def search_modrinth(type=None, version=None, modpack=None):
     choice = hits[int(input("choose -> ")) - 1]
     project_id = choice["project_id"]
 
-    versions = requests.get(
+    versions = session.get(
         f"https://api.modrinth.com/v2/project/{project_id}/version"
     ).json()
 
