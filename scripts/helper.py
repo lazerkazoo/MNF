@@ -30,9 +30,14 @@ def download_musthaves(pack=None):
     if confirm("download must-haves"):
         st = time()
         for i in must_haves:
-            for j in must_haves[i]:
+            for num, j in enumerate(must_haves[i]):
                 try:
-                    print(colored(f"[{i}] downloading {j}", "yellow"))
+                    print(
+                        colored(
+                            f"[{i}] [{num + 1}/{len(must_haves[i])}] downloading {j}",
+                            "yellow",
+                        )
+                    )
                     file_name = download_first_from_modrinth(pack, j, i)["file"]
                     file_path = f"{INST_DIR}/{pack}/{DIRS[i]}/{file_name}"
                     if file_path.endswith(".jar"):

@@ -35,16 +35,21 @@ def edit_musthaves(todo=None, to_edit=None):
     if to_edit is None:
         to_edit = choose(["mod", "resourcepack", "shader"])
     stuff = file[to_edit]
+    stuff.sort()
     if todo == "remove":
         to_remove = choose(stuff)
         stuff.remove(to_remove)
     elif todo == "add":
-        to_add = input("type name what to add -> ")
+        to_add = input("type name what to add -> ").lower()
         if to_add in stuff:
             print(colored("already in must-haves!", "red"))
             return
         stuff.append(to_add)
+        if to_edit == "shader" and "iris" not in stuff:
+            if confirm("u need iris for shaders, add"):
+                stuff.append("iris")
 
+    stuff.sort()
     file[to_edit] = stuff
     save_json("data/must-haves.json", file)
     if confirm("another"):
