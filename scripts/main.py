@@ -458,7 +458,8 @@ def search_modrinth(type=None, version=None, modpack=None):
             extract(tmp_path, "modpack")
             modpack = get_modrinth_index()["name"]
             install_modpack()
-            download_musthaves(modpack)
+            if confirm("download must-haves"):
+                download_musthaves(modpack)
             break
 
 
@@ -470,16 +471,17 @@ def main():
 
     options = {
         "search modrinth": search_modrinth,
+        "edit must-haves": edit_musthaves,
         "modpack": {
             "create custom modpack": custom_modpack,
             "update modpack mods": update_modpack_mods,
-            "remove mod from modpack": remove_mod,
-            "download modpack from file": download_modpack,
+            "add must-haves to modpack": download_musthaves,
             "change version of modpack": change_modpack_ver,
             "remove modpack": remove_modpack,
-            "export modpack": export_modpack,
         },
-        "edit must-haves": edit_musthaves,
+        "remove mod from modpack": remove_mod,
+        "download modpack from file": download_modpack,
+        "export modpack": export_modpack,
     }
 
     choice = choose(list(options.keys()))

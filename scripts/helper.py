@@ -27,30 +27,29 @@ def download_file(url: str, dest: str):
 def download_musthaves(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
-    if confirm("download must-haves"):
-        st = time()
-        for i in must_haves:
-            for num, j in enumerate(must_haves[i]):
-                try:
-                    print(
-                        colored(
-                            f"[{i}] [{num + 1}/{len(must_haves[i])}] downloading {j}",
-                            "yellow",
-                        )
+    st = time()
+    for i in must_haves:
+        for num, j in enumerate(must_haves[i]):
+            try:
+                print(
+                    colored(
+                        f"[{i}] [{num + 1}/{len(must_haves[i])}] downloading {j}",
+                        "yellow",
                     )
-                    file_name = download_first_from_modrinth(pack, j, i)["file"]
-                    file_path = f"{INST_DIR}/{pack}/{DIRS[i]}/{file_name}"
-                    if file_path.endswith(".jar"):
-                        download_depends(
-                            file_path,
-                            get_modrinth_index(get_mrpack(pack))["dependencies"][
-                                "minecraft"
-                            ],
-                            pack,
-                        )
-                except Exception:
-                    print(colored("something went wrong!", "red"))
-        print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
+                )
+                file_name = download_first_from_modrinth(pack, j, i)["file"]
+                file_path = f"{INST_DIR}/{pack}/{DIRS[i]}/{file_name}"
+                if file_path.endswith(".jar"):
+                    download_depends(
+                        file_path,
+                        get_modrinth_index(get_mrpack(pack))["dependencies"][
+                            "minecraft"
+                        ],
+                        pack,
+                    )
+            except Exception:
+                print(colored("something went wrong!", "red"))
+    print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
 
 def download_first_from_modrinth(pack: str, query: str, type: str):
