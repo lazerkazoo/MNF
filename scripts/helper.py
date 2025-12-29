@@ -39,11 +39,11 @@ def download_musthaves(pack=None):
                 )
                 download_first_from_modrinth(pack, j, i)
             except Exception:
-                print(colored("something went wrong!", "red"))
+                pass
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
 
-def download_first_from_modrinth(pack: str, query: str, type: str):
+def download_first_from_modrinth(pack: str, query: str, type: str, strict=False):
     index = get_modrinth_index(get_mrpack(pack))
     depends = index["dependencies"]
     version = depends["minecraft"]
@@ -53,7 +53,7 @@ def download_first_from_modrinth(pack: str, query: str, type: str):
 
     if not hits:
         return
-    if hits[0]["slug"] != query:
+    if strict and hits[0]["slug"] != query:
         return
 
     project_id = hits[0]["project_id"]
@@ -143,7 +143,7 @@ def download_depends(file: str, version: str, pack: str):
     print(colored("downloading dependencies...", "yellow"))
 
     for dep in depends:
-        download_first_from_modrinth(pack, dep, "mod")
+        download_first_from_modrinth(pack, dep, "mod", True)
 
 
 def install_fabric(mc: str, loader: str = ""):
