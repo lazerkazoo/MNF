@@ -70,12 +70,9 @@ def extract(file: str, extr_dir: str):
 
 
 def remove_temps():
-    if exists("/tmp/mod"):
-        rmtree("/tmp/mod")
-    if exists("/tmp/modpack"):
-        rmtree("/tmp/modpack")
-    if exists("/tmp/worlds"):
-        rmtree("/tmp/worlds")
+    rmtree("/tmp/mod", ignore_errors=True)
+    rmtree("/tmp/modpack", ignore_errors=True)
+    rmtree("/tmp/worlds", ignore_errors=True)
 
 
 def get_modpacks():
@@ -121,25 +118,22 @@ def get_modrinth_index(folder="/tmp/modpack"):
     return load_json(f"{folder}/modrinth.index.json")
 
 
-def download_depends(file: str, version: str, pack: str):
-    extract(file, "mod")
-
-    data = load_json("/tmp/mod/fabric.mod.json")
+def download_depends(file: str, pack: str):
+    with ZipFile(file, "r") as z:
+        data = json.loads(z.read("fabric.mod.json"))
 
     depends = data["depends"]
-    if "minecraft" in depends:
-        depends.pop("minecraft")
-    if "java" in depends:
-        depends.pop("java")
-    if "sodium" in depends:
-        depends.pop("sodium")
+    for dep in ["minecraft", "java", "sodium"]:
+        if dep in depends:
+            depends.pop(dep)
 
     for i in list(depends):
         if i.startswith("fabric"):
             depends.pop(i)
 
-    if len(depends) <= 0:
+    if not depends:
         return
+
     print(colored("downloading dependencies...", "yellow"))
 
     for dep in depends:
@@ -148,10 +142,11 @@ def download_depends(file: str, version: str, pack: str):
 
 def install_fabric(mc: str, loader: str = ""):
     print("installing fabric...")
-    download_file(
-        "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.0/fabric-installer-1.1.0.jar",
-        "/tmp/fabric-installer.jar",
-    )
+    if not exists("/tmp/fabric-installer.jar"):
+        download_file(
+            "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.0/fabric-installer-1.1.0.jar",
+            "/tmp/fabric-installer.jar",
+        )
 
     cmd = [
         "java",
@@ -316,22 +311,20 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
                 if print_downloading:
                     print(colored(f"downloading {file_name}...", "yellow"))
                 download_file(file_url, target)
-                if file_url.endswith(".jar"):
-                    download_depends(target, version, modpack)
 
                 generate_new_entry(
                     (type, index_file, modpack), (file_name, file_url), v
                 )
 
                 if type == "mod":
-                    download_depends(target, version, modpack)
+                    download_depends(target, modpack)
+                break
 
             # MODPACK INSTALLATION
             tmp_path = f"/tmp/{file_name}"
             download_file(file_url, tmp_path)
 
             extract(tmp_path, "modpack")
-            modpack = get_modrinth_index()["name"]
             install_modpack()
             if confirm("download must-haves"):
                 download_musthaves(modpack)
