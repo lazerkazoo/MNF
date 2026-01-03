@@ -5,7 +5,7 @@ from os.path import abspath, dirname, exists
 from shutil import copy, copytree, rmtree
 from subprocess import run
 from threading import Thread
-from time import time
+from time import sleep, time
 from uuid import uuid4
 from zipfile import ZipFile
 
@@ -31,6 +31,7 @@ def download_musthaves(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
     st = time()
+
     for i in must_haves:
         for j in must_haves[i]:
             threads.append(
@@ -40,17 +41,12 @@ def download_musthaves(pack=None):
     for thread in threads:
         print(
             colored(
-                f"{thread._args[2]} starting download for {thread._args[1]}...",
+                f"[{thread._args[2]}] starting download for {thread._args[1]}...",
                 "yellow",
             )
         )
-        try:
-            thread.start()
-        except Exception:
-            pass
-
-    for thread in threads:
-        thread.join()
+        thread.start()
+        sleep(0.15)
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
@@ -131,7 +127,6 @@ def get_modrinth_index(folder="/tmp/modpack"):
 
 
 def download_depends(file: str, pack: str):
-    threads = []
     with ZipFile(file, "r") as z:
         data = json.loads(z.read("fabric.mod.json"))
 
@@ -150,14 +145,7 @@ def download_depends(file: str, pack: str):
     print(colored("downloading dependencies...", "yellow"))
 
     for dep in depends:
-        threads.append(
-            Thread(target=download_first_from_modrinth, args=(pack, dep, "mod", True))
-        )
-
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
+        download_first_from_modrinth(pack, dep, "mod", True)
 
 
 def install_fabric(mc: str, loader: str = ""):
@@ -329,7 +317,6 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
             file_name = file_info["filename"]
 
             if type != "modpack":
-                index_file = get_modrinth_index(get_mrpack(modpack))
                 type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
                 makedirs(abspath(type_dir), exist_ok=True)
                 target = f"{type_dir}/{file_name}"
@@ -339,10 +326,12 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
                 download_file(file_url, target)
 
                 generate_new_entry(
-                    (type, index_file, modpack), (file_name, file_url), v
+                    (type, get_modrinth_index(get_mrpack(modpack)), modpack),
+                    (file_name, file_url),
+                    v,
                 )
 
-                if type == "mod" and file_name.endswith(".jar"):
+                if type == "mod":
                     download_depends(target, modpack)
                 break
 
