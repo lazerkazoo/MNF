@@ -4,6 +4,7 @@ from os import listdir, makedirs, rename
 from os.path import abspath, dirname, exists
 from shutil import copy, copytree, rmtree
 from subprocess import run
+from threading import Thread
 from time import time
 from uuid import uuid4
 from zipfile import ZipFile
@@ -25,21 +26,32 @@ def download_file(url: str, dest: str):
 
 
 def download_musthaves(pack=None):
+    threads = []
+
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
     st = time()
     for i in must_haves:
-        for num, j in enumerate(must_haves[i]):
-            try:
-                print(
-                    colored(
-                        f"[{i}] [{num + 1}/{len(must_haves[i])}] downloading {j}",
-                        "yellow",
-                    )
-                )
-                download_first_from_modrinth(pack, j, i)
-            except Exception:
-                pass
+        for j in must_haves[i]:
+            threads.append(
+                Thread(target=download_first_from_modrinth, args=(pack, j, i))
+            )
+
+    for thread in threads:
+        print(
+            colored(
+                f"{thread._args[2]} starting download for {thread._args[1]}...",
+                "yellow",
+            )
+        )
+        try:
+            thread.start()
+        except Exception:
+            pass
+
+    for thread in threads:
+        thread.join()
+
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
 
@@ -119,6 +131,7 @@ def get_modrinth_index(folder="/tmp/modpack"):
 
 
 def download_depends(file: str, pack: str):
+    threads = []
     with ZipFile(file, "r") as z:
         data = json.loads(z.read("fabric.mod.json"))
 
@@ -137,7 +150,14 @@ def download_depends(file: str, pack: str):
     print(colored("downloading dependencies...", "yellow"))
 
     for dep in depends:
-        download_first_from_modrinth(pack, dep, "mod", True)
+        threads.append(
+            Thread(target=download_first_from_modrinth, args=(pack, dep, "mod", True))
+        )
+
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
 
 
 def install_fabric(mc: str, loader: str = ""):
@@ -200,14 +220,20 @@ def install_modpack():
 
     downloads = {i["downloads"][0]: f"{dir}/{i['path']}" for i in files}
 
+    threads = []
     for num, url in enumerate(downloads):
+        threads.append(Thread(target=download_file, args=(url, downloads[url])))
+
+    for num, thread in enumerate(threads):
         print(
             colored(
-                f"[{num + 1}/{len(downloads)}] downloading {url.split('/')[-1]}",
+                f"[{num + 1}/{len(downloads)}] downloading {thread._args[0].split('/')[-1]}",
                 "yellow",
             )
         )
-        download_file(url, downloads[url])
+        thread.start()
+    for thread in threads:
+        thread.join()
 
     launcher_data = load_json(f"{MC_DIR}/launcher_profiles.json")
 
@@ -316,7 +342,7 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
                     (type, index_file, modpack), (file_name, file_url), v
                 )
 
-                if type == "mod":
+                if type == "mod" and file_name.endswith(".jar"):
                     download_depends(target, modpack)
                 break
 
