@@ -46,7 +46,7 @@ def download_musthaves(pack=None):
             )
         )
         thread.start()
-        sleep(0.15)
+        sleep(0.2)
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
@@ -174,7 +174,7 @@ def install_fabric(mc: str, loader: str = ""):
     run(cmd)
 
 
-def install_modpack():
+def install_modpack(ask_install_musthaves=False):
     st = time()
     data = get_modrinth_index()
     depends = data["dependencies"]
@@ -213,6 +213,8 @@ def install_modpack():
         threads.append(Thread(target=download_file, args=(url, downloads[url])))
 
     for num, thread in enumerate(threads):
+        if num % 10 == 0 and num > 0:
+            threads[num - 5].join()
         print(
             colored(
                 f"[{num + 1}/{len(downloads)}] downloading {thread._args[0].split('/')[-1]}",
@@ -220,8 +222,7 @@ def install_modpack():
             )
         )
         thread.start()
-    for thread in threads:
-        thread.join()
+        sleep(0.02)
 
     launcher_data = load_json(f"{MC_DIR}/launcher_profiles.json")
 
@@ -248,6 +249,10 @@ def install_modpack():
         )
     )
     copytree("/tmp/modpack", f"{dir}/mrpack", dirs_exist_ok=True)
+
+    if ask_install_musthaves:
+        if confirm("download must-haves"):
+            download_musthaves(name)
 
 
 def init_data(type=None, version=None, modpack=None):
@@ -340,9 +345,7 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
             download_file(file_url, tmp_path)
 
             extract(tmp_path, "modpack")
-            install_modpack()
-            if confirm("download must-haves"):
-                download_musthaves(modpack)
+            install_modpack(True)
             break
 
 
