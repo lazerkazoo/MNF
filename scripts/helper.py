@@ -213,8 +213,8 @@ def install_modpack(ask_install_musthaves=False):
         threads.append(Thread(target=download_file, args=(url, downloads[url])))
 
     for num, thread in enumerate(threads):
-        if num % 10 == 0 and num > 0:
-            threads[num - 5].join()
+        if num % 20 == 0 and num > 0:
+            threads[num - 20].join()
         print(
             colored(
                 f"[{num + 1}/{len(downloads)}] downloading {thread._args[0].split('/')[-1]}",

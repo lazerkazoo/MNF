@@ -336,6 +336,9 @@ def search_modrinth(type=None, version=None, modpack=None):
     versions = get_versions(choice["project_id"])
 
     download_from_modrinth(data[0], data[1], data[2], versions)
+    if data[0] != "modpack":
+        if confirm("another"):
+            search_modrinth(data[0], data[1], data[2])
 
 
 def main():
