@@ -26,6 +26,8 @@ def download_file(url: str, dest: str):
 
 
 def download_musthaves(pack=None):
+    threads: list[Thread] = []
+
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
     pack_index = get_modrinth_index(get_mrpack(pack))
@@ -35,12 +37,21 @@ def download_musthaves(pack=None):
         for name in must_haves[type].keys():
             project_id = must_haves[type][name]
             versions = get_versions(project_id)
-            download_from_modrinth(
-                type,
-                pack_index["dependencies"]["minecraft"],
-                pack,
-                versions,
+            threads.append(
+                Thread(
+                    target=download_from_modrinth,
+                    args=(
+                        type,
+                        pack_index["dependencies"]["minecraft"],
+                        pack,
+                        versions,
+                    ),
+                )
             )
+
+    for thread in threads:
+        thread.start()
+        sleep(0.2)
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
