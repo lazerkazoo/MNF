@@ -51,7 +51,7 @@ def download_musthaves(pack=None):
 
     for thread in threads:
         thread.start()
-        sleep(0.2)
+        thread.join()
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
