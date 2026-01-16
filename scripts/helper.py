@@ -26,27 +26,21 @@ def download_file(url: str, dest: str):
 
 
 def download_musthaves(pack=None):
-    threads = []
-
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
+    pack_index = get_modrinth_index(get_mrpack(pack))
     st = time()
 
-    for i in must_haves:
-        for j in must_haves[i]:
-            threads.append(
-                Thread(target=download_first_from_modrinth, args=(pack, j, i))
+    for type in must_haves:
+        for name in must_haves[type].keys():
+            project_id = must_haves[type][name]
+            versions = get_versions(project_id)
+            download_from_modrinth(
+                type,
+                pack_index["dependencies"]["minecraft"],
+                pack,
+                versions,
             )
-
-    for thread in threads:
-        print(
-            colored(
-                f"[{thread._args[2]}] starting download for {thread._args[1]}...",
-                "yellow",
-            )
-        )
-        thread.start()
-        sleep(0.2)
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
@@ -271,7 +265,7 @@ def init_data(type=None, version=None, modpack=None):
     return (type, version, modpack)
 
 
-def create_params(type, version, query=None):
+def create_params(type, version=None, query=None):
     if query is None:
         query = input("search modrinth -> ")
 
@@ -280,7 +274,11 @@ def create_params(type, version, query=None):
     if type not in ["resourcepack", "shader"]:
         base_facets.append(["categories:fabric"])
 
-    if version not in ("", None) and type not in ["resourcepack", "shader"]:
+    if (
+        version not in ("", None)
+        and type not in ["resourcepack", "shader"]
+        and version is not None
+    ):
         base_facets.append([f"versions:{version}"])
 
     return {"query": query, "facets": json.dumps(base_facets)}
