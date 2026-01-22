@@ -31,20 +31,27 @@ def download_musthaves(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
     pack_index = get_modrinth_index(get_mrpack(pack))
+    mc = pack_index["dependencies"]["minecraft"]
     st = time()
+    print(
+        colored(
+            "gettings downloads (will take longer the more must-haves u have)...",
+            "yellow",
+        )
+    )
 
     for type in must_haves:
-        for name in must_haves[type].keys():
-            project_id = must_haves[type][name]
-            versions = get_versions(project_id)
+        names = must_haves[type]
+        for i, name in enumerate(names):
+            print(colored(f"[{i + 1}/{len(names)}] [{type}] {name}", "cyan"))
             threads.append(
                 Thread(
                     target=download_from_modrinth,
                     args=(
                         type,
-                        pack_index["dependencies"]["minecraft"],
+                        mc,
                         pack,
-                        versions,
+                        get_versions(names[name]),
                     ),
                 )
             )
