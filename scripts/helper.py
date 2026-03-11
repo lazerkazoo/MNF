@@ -19,10 +19,7 @@ session = requests.session()
 
 def download_file(url: str, dest: str):
     makedirs(dirname(dest), exist_ok=True)
-    with session.get(url, stream=True) as r:
-        with open(dest, "wb") as f:
-            for chunk in r.iter_content(1024 * 1024 * 8):
-                f.write(chunk)
+    run(["curl", url, "--output", dest, "--silent"])
 
 
 def download_musthaves(pack=None):
