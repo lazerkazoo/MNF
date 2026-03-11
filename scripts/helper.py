@@ -31,37 +31,42 @@ def download_musthaves(pack=None):
     pack_index = get_modrinth_index(get_mrpack(pack))
     mc = pack_index["dependencies"]["minecraft"]
     st = time()
-    print(
-        colored(
-            "gettings downloads (will take longer the more must-haves u have)...",
-            "yellow",
-        )
-    )
 
     for type in must_haves:
         names = must_haves[type]
         for i, name in enumerate(names):
-            print(colored(f"[{i + 1}/{len(names)}] [{type}] {name}", "cyan"))
             threads.append(
-                Thread(
-                    target=download_from_modrinth,
-                    args=(
-                        type,
-                        mc,
-                        pack,
-                        get_versions(names[name]),
-                    ),
-                )
+                Thread(target=download_musthave, args=(type, mc, pack, name, names))
             )
 
     for thread in threads:
-        sleep(0.01)
         thread.start()
-
     for thread in threads:
         thread.join()
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
+
+
+def download_musthave(type, mc, pack, name, names):
+    threads: list[Thread] = []
+
+    threads.append(
+        Thread(
+            target=download_from_modrinth,
+            args=(
+                type,
+                mc,
+                pack,
+                get_versions(names[name]),
+            ),
+        )
+    )
+
+    for thread in threads:
+        sleep(0.01)
+        thread.start()
+    for thread in threads:
+        thread.join()
 
 
 def download_first_from_modrinth(pack: str, query: str, type: str, strict=False):
