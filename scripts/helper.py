@@ -1,4 +1,5 @@
 import json
+import random
 from datetime import datetime
 from os import listdir, makedirs, rename
 from os.path import abspath, dirname, exists
@@ -54,7 +55,10 @@ def download_musthaves(pack=None):
             )
 
     for thread in threads:
+        sleep(0.01)
         thread.start()
+
+    for thread in threads:
         thread.join()
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
@@ -343,11 +347,16 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
                     print(colored(f"downloading {file_name}...", "yellow"))
                 download_file(file_url, target)
 
-                generate_new_entry(
-                    (type, get_modrinth_index(get_mrpack(modpack)), modpack),
-                    (file_name, file_url),
-                    v,
-                )
+                for m in range(10):
+                    try:
+                        generate_new_entry(
+                            (type, get_modrinth_index(get_mrpack(modpack)), modpack),
+                            (file_name, file_url),
+                            v,
+                        )
+                        break
+                    except Exception:
+                        sleep(random.random() * 2 + 1)
 
                 if type == "mod":
                     download_depends(target, modpack)
