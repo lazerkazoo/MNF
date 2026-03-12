@@ -174,7 +174,7 @@ def install_fabric(mc: str, loader: str = ""):
     print("installing fabric...")
     if not exists("/tmp/fabric-installer.jar"):
         download_file(
-            "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.0/fabric-installer-1.1.0.jar",
+            "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.1/fabric-installer-1.1.1.jar",
             "/tmp/fabric-installer.jar",
         )
 
