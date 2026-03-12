@@ -1,7 +1,7 @@
 from os import listdir, makedirs, remove, rename
 from os.path import basename, exists
 from shutil import copy, copytree, make_archive, rmtree
-from time import sleep, time
+from time import time
 
 import requests
 from termcolor import colored
@@ -50,7 +50,9 @@ def edit_musthaves(todo=None, to_edit=None):
 
         file[to_edit][choice["slug"]] = choice["project_id"]
     else:
-        file[to_edit].pop(choose(list(file[to_edit].keys())))
+        choice = choose(list(file[to_edit].keys()), to_edit)
+        if confirm(f"remove {choice}"):
+            file[to_edit].pop(choice)
 
     file[to_edit] = stuff
     save_json("data/must-haves.json", file)
@@ -256,26 +258,7 @@ def remove_mod(pack=None):
         mods.append(m)
 
     mods.sort()
-    for num, m in enumerate(mods):
-        print(f"[{num + 1}] {m}")
-
-    mod = input("choose [can enter name] -> ")
-    mod_ = mod
-
-    try:
-        mod = int(mod) - 1
-        mod = mods[mod]
-    except Exception:
-        for i in mods:
-            if i.lower().startswith(mod.lower()):
-                mod = i
-                break
-
-    if mod == mod_:
-        print(colored("could not find that mod, try again", "red"))
-        sleep(0.5)
-        remove_mod(pack)
-        return
+    mod = choose(mods, "mod")
 
     if confirm(f"remove {mod}"):
         remove(f"{mods_dir}/{mod}")
@@ -328,9 +311,11 @@ def search_modrinth(type=None, version=None, modpack=None):
         print(colored(f"no {data[0]}s found", "red"))
         return search_modrinth(data[0], data[1])
 
-    for num, hit in enumerate(hits):
-        print(f"[{num + 1}] {hit['title']}")
-    choice = hits[int(input("choose -> ")) - 1]
+    hit_titles = []
+    for h in hits:
+        hit_titles.append(h["title"])
+
+    choice = hits[hit_titles.index(choose(hit_titles, data[0]))]
 
     versions = get_versions(choice["project_id"])
 

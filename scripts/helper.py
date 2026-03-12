@@ -11,6 +11,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 import requests
+from fuzzywuzzy import fuzz
 from termcolor import colored
 
 from scripts.constants import DIRS, INST_DIR, MC_DIR, must_haves
@@ -103,19 +104,30 @@ def confirm(txt="r u sure"):
     return input(f"{txt} [y/n] -> ") in ["Y", "y", ""]
 
 
-def choose(lst: list, stuff: str = "stuff"):
+def choose(lst: list, stuff="stuff"):
+    final = ""
     if len(lst) <= 0:
         print(colored(f"no {stuff}s installed!", "yellow"))
         exit()
-    for num, i in enumerate(lst):
-        print(f"[{num + 1}] {i}")
+    for n, i in enumerate(lst):
+        print(f"[{n + 1}] {i}")
 
-    choice = int(input("choose -> ")) - 1
-    if choice > len(lst) - 1 or choice < 0:
-        print(colored("that is not an option try again", "red"))
-        return choose(lst, stuff)
+    choice = input("choose [can enter name] -> ")
+    try:
+        choice = int(choice) - 1
+        if choice > len(lst) - 1 or choice < 0:
+            print(colored("that is not an option try again", "red"))
+            return choose(lst, stuff)
+        final = lst[choice]
+    except Exception:
+        current = 0
+        for i in lst:
+            ratio = fuzz.ratio(i, choice)
+            if ratio > current:
+                current = ratio
+                final = i
 
-    return lst[choice]
+    return final
 
 
 def save_json(file: str, js):
@@ -344,7 +356,7 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
                     print(colored(f"downloading {file_name}...", "yellow"))
                 download_file(file_url, target)
 
-                for m in range(10):
+                for m in range(25):
                     try:
                         generate_new_entry(
                             (type, get_modrinth_index(get_mrpack(modpack)), modpack),
@@ -353,7 +365,7 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
                         )
                         break
                     except Exception:
-                        sleep(random.random() * 2 + 1)
+                        sleep(random.random() * 1 + 0.5)
 
                 if type == "mod":
                     download_depends(target, modpack)
