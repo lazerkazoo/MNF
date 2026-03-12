@@ -1,5 +1,5 @@
 from os import listdir, makedirs, remove, rename
-from os.path import basename, exists
+from os.path import exists
 from shutil import copy, copytree, make_archive, rmtree
 from time import time
 
@@ -11,7 +11,6 @@ from scripts.helper import (
     choose,
     confirm,
     create_params,
-    download_file,
     download_first_from_modrinth,
     download_from_modrinth,
     download_musthaves,
@@ -26,6 +25,7 @@ from scripts.helper import (
     load_json,
     remove_temps,
     save_json,
+    update_mod,
 )
 
 session = requests.session()
@@ -74,6 +74,7 @@ def change_modpack_ver():
     remove_modpack(pack)
 
     install_modpack()
+    download_first_from_modrinth(pack, "fabric api", "mod")
     update_modpack_mods(pack)
 
 
@@ -117,99 +118,21 @@ def custom_modpack():
 
 def update_modpack_mods(pack=None):
     st = time()
+
     if pack is None:
         pack = choose(get_modpacks(), "modpacks")
-    mods_dir = f"{INST_DIR}/{pack}/mods"
     pack_index = get_modrinth_index(get_mrpack(pack))
     mc_version = pack_index["dependencies"]["minecraft"]
 
     new_files = []
     for num, file_entry in enumerate(pack_index["files"]):
-        new_files.append(file_entry)
-        if not file_entry["path"].startswith("mods/"):
-            continue
+        print(colored(f"[{num + 1}/{len(pack_index['files'])}]", "yellow"))
+        update_mod(file_entry, mc_version, new_files, pack, pack_index)
 
-        mod_url = file_entry["downloads"][0]
-        try:
-            project_id = mod_url.split("/data/")[1].split("/")[0]
-        except Exception:
-            print(
-                colored(
-                    f"no compatible versions found for {file_entry['path']}, removing mod",
-                    "red",
-                )
-            )
-            new_files.remove(file_entry)
-            continue
-
-        print(
-            colored(
-                f"[{num + 1}/{len(pack_index['files'])}] checking for updates for {file_entry['path']}...",
-                "cyan",
-            )
-        )
-
-        versions_response = session.get(
-            f"https://api.modrinth.com/v2/project/{project_id}/version"
-        )
-        if not versions_response.ok:
-            print(
-                colored(
-                    f"failed to fetch versions for {file_entry['path']}, removing mod",
-                    "red",
-                )
-            )
-            new_files.remove(file_entry)
-            continue
-
-        versions = versions_response.json()
-
-        latest_version = None
-        for version in versions:
-            if (
-                mc_version in version["game_versions"]
-                and "fabric" in version["loaders"]
-            ):
-                latest_version = version
-                break
-
-        if latest_version is None:
-            print(
-                colored(
-                    f"no compatible versions found for {file_entry['path']}, removing mod",
-                    "red",
-                )
-            )
-            new_files.remove(file_entry)
-            continue
-
-        latest_sha1 = latest_version["files"][0]["hashes"]["sha1"]
-        current_sha1 = file_entry["hashes"]["sha1"]
-
-        if latest_sha1 == current_sha1:
-            continue
-
-        print(colored(f"updating {file_entry['path']}...", "yellow"))
-
-        file_url = latest_version["files"][0]["url"]
-        file_name = latest_version["files"][0]["filename"]
-        target_path = f"{mods_dir}/{file_name}"
-
-        download_file(file_url, target_path)
-
-        old_mod_path = f"{mods_dir}/{basename(file_entry['path'])}"
-        remove(old_mod_path)
-
-        file_entry["path"] = f"mods/{file_name}"
-        file_entry["hashes"] = latest_version["files"][0]["hashes"]
-        file_entry["downloads"] = [file_url]
-        file_entry["fileSize"] = latest_version["files"][0]["size"]
+    print(colored(f"finished updating in {round(time() - st, 1)}s!", "green"))
 
     pack_index["files"] = new_files
     save_json(f"{get_mrpack(pack)}/modrinth.index.json", pack_index)
-
-    print(colored(f"update complete for {pack}", "green"))
-    print(colored(f"updated in {round(time() - st, 2)}", "green"))
 
 
 def download_modpack():
@@ -336,9 +259,9 @@ def main():
         "edit must-haves": edit_musthaves,
         "modpack": {
             "create custom modpack": custom_modpack,
-            "update modpack mods": update_modpack_mods,
+            "update modpack mods [beta]": update_modpack_mods,
+            "change version of modpack [uses update modpack mods]": change_modpack_ver,
             "add must-haves to modpack": download_musthaves,
-            "change version of modpack": change_modpack_ver,
             "remove modpack": remove_modpack,
         },
         "remove mod from modpack": remove_mod,

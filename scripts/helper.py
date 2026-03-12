@@ -1,7 +1,7 @@
 import json
 import random
 from datetime import datetime
-from os import listdir, makedirs, rename
+from os import listdir, makedirs, remove, rename
 from os.path import abspath, dirname, exists
 from shutil import copy, copytree, rmtree
 from subprocess import run
@@ -80,6 +80,60 @@ def download_first_from_modrinth(pack: str, query: str, type: str, strict=False)
     versions = get_versions(project_id)
 
     download_from_modrinth(type, version, pack, versions, False)
+
+
+def update_mod(file_entry: dict, mc: str, new_files: list, pack: str, pack_index: dict):
+    new_files.append(file_entry)
+    url = file_entry["downloads"][0]
+    index = pack_index["files"].index(file_entry)
+    old_path = pack_index["files"][index]["path"]
+
+    project_id = url.split("/data/")[1].split("/")[0]
+    versions = get_versions(project_id)
+    latest_version = None
+
+    for v in versions:
+        condition = (
+            mc in v["game_versions"] and "fabric" in v["loaders"]
+            if url.split(".")[-1] == "jar"
+            else True
+        )
+        if condition:
+            latest_version = v
+            break
+    if latest_version is None:
+        return
+
+    files = latest_version["files"][0]
+    hashes = files["hashes"]
+    latest_sha1 = ["sha1"]
+    latest_sha512 = hashes["sha512"]
+    latest_path = f"{file_entry['path'].split('/')[0]}/{files['filename']}"
+    latest_url = files["url"]
+
+    if latest_url == url:
+        print(colored("already up-to-date, skipping", "magenta"))
+        return
+    print(colored(f"downloading {latest_path}...", "cyan"))
+
+    download_file(latest_url, f"{INST_DIR}/{pack}/{latest_path}")
+    download_depends(f"{INST_DIR}/{pack}/{latest_path}", pack)
+    try:
+        remove(f"{INST_DIR}/{pack}/{old_path}")
+    except Exception:
+        print(colored("failed to remove old file!", "red"))
+
+    new_files.remove(file_entry)
+
+    file_entry = {
+        "path": latest_path,
+        "downloads": [latest_url],
+        "hashes": {
+            "sha1": latest_sha1,
+            "sha512": latest_sha512,
+        },
+    }
+    new_files.append(file_entry)
 
 
 def extract(file: str, extr_dir: str):
