@@ -356,7 +356,7 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
                     print(colored(f"downloading {file_name}...", "yellow"))
                 download_file(file_url, target)
 
-                for m in range(25):
+                for m in range(8):
                     try:
                         generate_new_entry(
                             (type, get_modrinth_index(get_mrpack(modpack)), modpack),
