@@ -48,25 +48,17 @@ def download_musthaves(pack=None):
 
 
 def download_musthave(type, mc, pack, name, names):
-    threads: list[Thread] = []
-
-    threads.append(
-        Thread(
-            target=download_from_modrinth,
-            args=(
-                type,
-                mc,
-                pack,
-                get_versions(names[name]),
-            ),
-        )
+    thread = Thread(
+        target=download_from_modrinth,
+        args=(
+            type,
+            mc,
+            pack,
+            get_versions(names[name]),
+        ),
     )
-
-    for thread in threads:
-        sleep(0.01)
-        thread.start()
-    for thread in threads:
-        thread.join()
+    thread.start()
+    thread.join()
 
 
 def download_first_from_modrinth(pack: str, query: str, type: str, strict=False):
