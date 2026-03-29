@@ -19,9 +19,259 @@ from scripts.constants import DIRS, INST_DIR, MC_DIR, must_haves
 session = requests.session()
 
 
+def save_json(file: str, js):
+    with open(file, "w") as f:
+        json.dump(js, f, indent=2)
+
+
+def load_json(file: str):
+    with open(file, "r") as f:
+        return json.load(f)
+
+
 def download_file(url: str, dest: str):
     makedirs(dirname(dest), exist_ok=True)
     run(["curl", url, "--output", dest, "--silent"])
+
+
+def extract(file: str, extr_dir: str):
+    remove_temps()
+    with ZipFile(file, "r") as z:
+        z.extractall(f"/tmp/{extr_dir}")
+
+
+def remove_temps():
+    rmtree("/tmp/mod", ignore_errors=True)
+    rmtree("/tmp/modpack", ignore_errors=True)
+    rmtree("/tmp/worlds", ignore_errors=True)
+
+
+def get_modpacks():
+    if exists(f"{INST_DIR}"):
+        return listdir(f"{INST_DIR}")
+    return []
+
+
+def get_mrpack(pack: str):
+    return f"{INST_DIR}/{pack}/mrpack"
+
+
+def get_modrinth_index(folder="/tmp/modpack"):
+    return load_json(f"{folder}/modrinth.index.json")
+
+
+def get_mcversion(index):
+    return index["dependencies"]["minecraft"]
+
+
+def confirm(txt="r u sure"):
+    return input(f"{txt} [y/n] -> ") in ["Y", "y", ""]
+
+
+def choose(lst: list, stuff="stuff"):
+    final = ""
+    if len(lst) <= 0:
+        print(colored(f"no {stuff}s installed!", "yellow"))
+        exit()
+    for n, i in enumerate(lst):
+        print(f"[{n + 1}] {i}")
+
+    choice = input("choose [can enter name] -> ")
+    try:
+        choice = int(choice) - 1
+        if choice > len(lst) - 1 or choice < 0:
+            print(colored("that is not an option try again", "red"))
+            return choose(lst, stuff)
+        final = lst[choice]
+    except Exception:
+        current = 0
+        for i in lst:
+            ratio = fuzz.ratio(i, choice)
+            if ratio > current:
+                current = ratio
+                final = i
+
+    return final
+
+
+def create_params(type, version=None, query=None):
+    if query is None:
+        query = input("search modrinth -> ")
+
+    base_facets = [[f"project_type:{type}"]]
+
+    if type not in ["resourcepack", "shader"]:
+        base_facets.append(["categories:fabric"])
+
+    if (
+        version not in ("", None)
+        and type not in ["resourcepack", "shader"]
+        and version is not None
+    ):
+        base_facets.append([f"versions:{version}"])
+
+    return {"query": query, "facets": json.dumps(base_facets)}
+
+
+def get_hits(params):
+    response = session.get("https://api.modrinth.com/v2/search", params=params)
+    return response.json().get("hits", [])
+
+
+def get_versions(project_id):
+    return session.get(
+        f"https://api.modrinth.com/v2/project/{project_id}/version"
+    ).json()
+
+
+def double_check_version(versions, version):
+    all_versions = list({v["game_versions"][0] for v in versions})
+    all_versions.sort()
+    all_versions.reverse()
+
+    if version == "":
+        version = choose(list(reversed(all_versions)), "version")
+
+    return version
+
+
+def init_data(type=None, version=None, modpack=None):
+    if type is None:
+        types = ["mod", "modpack", "resourcepack", "shader"]
+        type = choose(types)
+
+        if type != "modpack":
+            modpack = choose(get_modpacks(), "modpack")
+            index_file = f"{get_mrpack(modpack)}/modrinth.index.json"
+            version = json.load(open(index_file))["dependencies"]["minecraft"]
+
+    if version is None:
+        version = input("mc version [just press enter to search all versions] -> ")
+
+    return (type, version, modpack)
+
+
+def download_from_modrinth(type, version, modpack, versions, print_downloading=True):
+    version = double_check_version(versions, version)
+    for v in versions:
+        condition = (
+            version in v["game_versions"] and "fabric" in v["loaders"]
+            if type in ["mod", "modpack"]
+            else True
+        )
+        if condition:
+            file_info = v["files"][0]
+            file_url = file_info["url"]
+            file_name = file_info["filename"]
+
+            if type != "modpack":
+                type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
+                makedirs(abspath(type_dir), exist_ok=True)
+                target = f"{type_dir}/{file_name}"
+
+                if print_downloading:
+                    print(colored(f"downloading {file_name}...", "yellow"))
+                download_file(file_url, target)
+
+                for m in range(8):
+                    try:
+                        generate_new_entry(
+                            (type, get_modrinth_index(get_mrpack(modpack)), modpack),
+                            (file_name, file_url),
+                            v,
+                        )
+                        break
+                    except Exception:
+                        sleep(random.random() * 1 + 0.5)
+
+                if type == "mod":
+                    download_depends(target, modpack)
+                break
+
+            tmp_path = f"/tmp/{file_name}"
+            download_file(file_url, tmp_path)
+
+            extract(tmp_path, "modpack")
+            install_modpack(True)
+            break
+
+
+def generate_new_entry(data, file_data, v):
+    new_entry = {
+        "path": f"{DIRS[data[0]]}/{file_data[0]}",
+        "hashes": {
+            "sha1": v["files"][0]["hashes"]["sha1"],
+            "sha512": v["files"][0]["hashes"].get("sha512", ""),
+        },
+        "downloads": [file_data[1]],
+        "fileSize": v["files"][0]["size"],
+    }
+    data[1]["files"] = [
+        f for f in data[1]["files"] if f["path"].lower() != new_entry["path"].lower()
+    ]
+
+    data[1]["files"].append(new_entry)
+
+    save_json(
+        f"{get_mrpack(data[2])}/modrinth.index.json",
+        data[1],
+    )
+
+
+def download_first_from_modrinth(pack: str, query: str, type: str, strict=False):
+    index = get_modrinth_index(get_mrpack(pack))
+    version = get_mcversion(index)
+
+    params = create_params(type, version, query)
+    hits = get_hits(params)
+
+    if not hits:
+        return
+    if strict and hits[0]["slug"] != query:
+        return
+
+    project_id = hits[0]["project_id"]
+
+    versions = get_versions(project_id)
+
+    download_from_modrinth(type, version, pack, versions, False)
+
+
+def download_depends(file: str, pack: str):
+    with ZipFile(file, "r") as z:
+        data = json.loads(z.read("fabric.mod.json"))
+
+    depends = data["depends"]
+    for dep in ["minecraft", "java", "sodium"]:
+        if dep in depends:
+            depends.pop(dep)
+
+    for i in list(depends):
+        if i.startswith("fabric"):
+            depends.pop(i)
+
+    if not depends:
+        return
+
+    print(colored("downloading dependencies...", "yellow"))
+
+    for dep in depends:
+        download_first_from_modrinth(pack, dep, "mod", True)
+
+
+def download_musthave(type, mc, pack, name, names):
+    # thread = Thread(
+    #     target=download_from_modrinth,
+    #     args=(
+    #         type,
+    #         mc,
+    #         pack,
+    #         get_versions(names[name]),
+    #     ),
+    # )
+    # thread.start()
+    # thread.join()
+    download_from_modrinth(type, mc, pack, get_versions(names[name]))
 
 
 def download_musthaves(pack=None):
@@ -29,8 +279,7 @@ def download_musthaves(pack=None):
 
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
-    pack_index = get_modrinth_index(get_mrpack(pack))
-    mc = pack_index["dependencies"]["minecraft"]
+    mc = get_mcversion(get_modrinth_index(get_mrpack(pack)))
     st = time()
 
     for type in must_haves:
@@ -46,40 +295,6 @@ def download_musthaves(pack=None):
         thread.join()
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
-
-
-def download_musthave(type, mc, pack, name, names):
-    thread = Thread(
-        target=download_from_modrinth,
-        args=(
-            type,
-            mc,
-            pack,
-            get_versions(names[name]),
-        ),
-    )
-    thread.start()
-    thread.join()
-
-
-def download_first_from_modrinth(pack: str, query: str, type: str, strict=False):
-    index = get_modrinth_index(get_mrpack(pack))
-    depends = index["dependencies"]
-    version = depends["minecraft"]
-
-    params = create_params(type, version, query)
-    hits = get_hits(params)
-
-    if not hits:
-        return
-    if strict and hits[0]["slug"] != query:
-        return
-
-    project_id = hits[0]["project_id"]
-
-    versions = get_versions(project_id)
-
-    download_from_modrinth(type, version, pack, versions, False)
 
 
 def update_mod(file_entry: dict, mc: str, new_files: list, pack: str, pack_index: dict):
@@ -136,94 +351,6 @@ def update_mod(file_entry: dict, mc: str, new_files: list, pack: str, pack_index
     new_files.append(file_entry)
 
 
-def extract(file: str, extr_dir: str):
-    remove_temps()
-    with ZipFile(file, "r") as z:
-        z.extractall(f"/tmp/{extr_dir}")
-
-
-def remove_temps():
-    rmtree("/tmp/mod", ignore_errors=True)
-    rmtree("/tmp/modpack", ignore_errors=True)
-    rmtree("/tmp/worlds", ignore_errors=True)
-
-
-def get_modpacks():
-    if exists(f"{INST_DIR}"):
-        return listdir(f"{INST_DIR}")
-    return []
-
-
-def confirm(txt="r u sure"):
-    return input(f"{txt} [y/n] -> ") in ["Y", "y", ""]
-
-
-def choose(lst: list, stuff="stuff"):
-    final = ""
-    if len(lst) <= 0:
-        print(colored(f"no {stuff}s installed!", "yellow"))
-        exit()
-    for n, i in enumerate(lst):
-        print(f"[{n + 1}] {i}")
-
-    choice = input("choose [can enter name] -> ")
-    try:
-        choice = int(choice) - 1
-        if choice > len(lst) - 1 or choice < 0:
-            print(colored("that is not an option try again", "red"))
-            return choose(lst, stuff)
-        final = lst[choice]
-    except Exception:
-        current = 0
-        for i in lst:
-            ratio = fuzz.ratio(i, choice)
-            if ratio > current:
-                current = ratio
-                final = i
-
-    return final
-
-
-def save_json(file: str, js):
-    with open(file, "w") as f:
-        json.dump(js, f, indent=2)
-
-
-def load_json(file: str):
-    with open(file, "r") as f:
-        return json.load(f)
-
-
-def get_mrpack(pack: str):
-    return f"{INST_DIR}/{pack}/mrpack"
-
-
-def get_modrinth_index(folder="/tmp/modpack"):
-    return load_json(f"{folder}/modrinth.index.json")
-
-
-def download_depends(file: str, pack: str):
-    with ZipFile(file, "r") as z:
-        data = json.loads(z.read("fabric.mod.json"))
-
-    depends = data["depends"]
-    for dep in ["minecraft", "java", "sodium"]:
-        if dep in depends:
-            depends.pop(dep)
-
-    for i in list(depends):
-        if i.startswith("fabric"):
-            depends.pop(i)
-
-    if not depends:
-        return
-
-    print(colored("downloading dependencies...", "yellow"))
-
-    for dep in depends:
-        download_first_from_modrinth(pack, dep, "mod", True)
-
-
 def install_fabric(mc: str, loader: str = ""):
     print("installing fabric...")
     if not exists("/tmp/fabric-installer.jar"):
@@ -253,26 +380,27 @@ def install_fabric(mc: str, loader: str = ""):
 def install_modpack(ask_install_musthaves=False):
     st = time()
     data = get_modrinth_index()
-    depends = data["dependencies"]
+    fabric = data["dependencies"]["fabric-loader"]
+    mc = get_mcversion(data)
     name = data["name"]
     files = data["files"]
     dir = f"{INST_DIR}/{name}"
     copytree("/tmp/modpack/overrides/", f"{INST_DIR}/{name}/", dirs_exist_ok=True)
     makedirs(f"{dir}/mods", exist_ok=True)
 
-    install_fabric(depends["minecraft"], depends["fabric-loader"])
+    install_fabric(mc, fabric)
     copytree(
-        f"{MC_DIR}/versions/fabric-loader-{depends['fabric-loader']}-{depends['minecraft']}",
+        f"{MC_DIR}/versions/fabric-loader-{fabric}-{mc}",
         f"{MC_DIR}/versions/{name}",
         dirs_exist_ok=True,
     )
     rename(
-        f"{MC_DIR}/versions/{name}/fabric-loader-{depends['fabric-loader']}-{depends['minecraft']}.json",
+        f"{MC_DIR}/versions/{name}/fabric-loader-{fabric}-{mc}.json",
         f"{MC_DIR}/versions/{name}/{name}.json",
     )
 
     copy(
-        f"{MC_DIR}/libraries/net/fabricmc/intermediary/{depends['minecraft']}/intermediary-{depends['minecraft']}.jar",
+        f"{MC_DIR}/libraries/net/fabricmc/intermediary/{mc}/intermediary-{mc}.jar",
         f"{MC_DIR}/versions/{name}/{name}.jar",
     )
 
@@ -304,7 +432,7 @@ def install_modpack(ask_install_musthaves=False):
 
     profiles = launcher_data.setdefault("profiles", {})
 
-    profile_id = uuid4().hex  # UUID as json-safe string
+    profile_id = uuid4().hex
     timestamp = datetime.utcnow().isoformat() + "Z"
 
     profiles[profile_id] = {
@@ -329,128 +457,3 @@ def install_modpack(ask_install_musthaves=False):
     if ask_install_musthaves:
         if confirm("download must-haves"):
             download_musthaves(name)
-
-
-def init_data(type=None, version=None, modpack=None):
-    if type is None:
-        types = ["mod", "modpack", "resourcepack", "shader"]
-        type = choose(types)
-
-        if type != "modpack":
-            modpack = choose(get_modpacks(), "modpack")
-            index_file = f"{get_mrpack(modpack)}/modrinth.index.json"
-            version = json.load(open(index_file))["dependencies"]["minecraft"]
-
-    if version is None:
-        version = input("mc version [just press enter to search all versions] -> ")
-
-    return (type, version, modpack)
-
-
-def create_params(type, version=None, query=None):
-    if query is None:
-        query = input("search modrinth -> ")
-
-    base_facets = [[f"project_type:{type}"]]
-
-    if type not in ["resourcepack", "shader"]:
-        base_facets.append(["categories:fabric"])
-
-    if (
-        version not in ("", None)
-        and type not in ["resourcepack", "shader"]
-        and version is not None
-    ):
-        base_facets.append([f"versions:{version}"])
-
-    return {"query": query, "facets": json.dumps(base_facets)}
-
-
-def get_hits(params):
-    response = session.get("https://api.modrinth.com/v2/search", params=params)
-    return response.json().get("hits", [])
-
-
-def get_versions(project_id):
-    return session.get(
-        f"https://api.modrinth.com/v2/project/{project_id}/version"
-    ).json()
-
-
-def double_check_version(versions, version):
-    all_versions = list({v["game_versions"][0] for v in versions})
-    all_versions.sort()
-    all_versions.reverse()
-
-    if version == "":
-        version = choose(list(reversed(all_versions)), "version")
-
-    return version
-
-
-def download_from_modrinth(type, version, modpack, versions, print_downloading=True):
-    version = double_check_version(versions, version)
-    for v in versions:
-        condition = (
-            version in v["game_versions"] and "fabric" in v["loaders"]
-            if type in ["mod", "modpack"]
-            else True
-        )
-        if condition:
-            file_info = v["files"][0]
-            file_url = file_info["url"]
-            file_name = file_info["filename"]
-
-            if type != "modpack":
-                type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
-                makedirs(abspath(type_dir), exist_ok=True)
-                target = f"{type_dir}/{file_name}"
-
-                if print_downloading:
-                    print(colored(f"downloading {file_name}...", "yellow"))
-                download_file(file_url, target)
-
-                for m in range(8):
-                    try:
-                        generate_new_entry(
-                            (type, get_modrinth_index(get_mrpack(modpack)), modpack),
-                            (file_name, file_url),
-                            v,
-                        )
-                        break
-                    except Exception:
-                        sleep(random.random() * 1 + 0.5)
-
-                if type == "mod":
-                    download_depends(target, modpack)
-                break
-
-            # MODPACK INSTALLATION
-            tmp_path = f"/tmp/{file_name}"
-            download_file(file_url, tmp_path)
-
-            extract(tmp_path, "modpack")
-            install_modpack(True)
-            break
-
-
-def generate_new_entry(data, file_data, v):
-    new_entry = {
-        "path": f"{DIRS[data[0]]}/{file_data[0]}",
-        "hashes": {
-            "sha1": v["files"][0]["hashes"]["sha1"],
-            "sha512": v["files"][0]["hashes"].get("sha512", ""),
-        },
-        "downloads": [file_data[1]],
-        "fileSize": v["files"][0]["size"],
-    }
-    data[1]["files"] = [
-        f for f in data[1]["files"] if f["path"].lower() != new_entry["path"].lower()
-    ]
-
-    data[1]["files"].append(new_entry)
-
-    save_json(
-        f"{get_mrpack(data[2])}/modrinth.index.json",
-        data[1],
-    )

@@ -16,6 +16,7 @@ from scripts.helper import (
     download_musthaves,
     extract,
     get_hits,
+    get_mcversion,
     get_modpacks,
     get_modrinth_index,
     get_mrpack,
@@ -122,7 +123,7 @@ def update_modpack_mods(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpacks")
     pack_index = get_modrinth_index(get_mrpack(pack))
-    mc_version = pack_index["dependencies"]["minecraft"]
+    mc_version = get_mcversion(pack_index)
 
     new_files = []
     for num, file_entry in enumerate(pack_index["files"]):
