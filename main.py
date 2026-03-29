@@ -257,10 +257,10 @@ def main():
     options = {
         "search modrinth": search_modrinth,
         "edit must-haves": edit_musthaves,
-        "modpack": {
+        "modpack (expands)": {
             "create custom modpack": custom_modpack,
-            "update modpack mods [beta]": update_modpack_mods,
-            "change version of modpack [uses update modpack mods]": change_modpack_ver,
+            "update modpack mods": update_modpack_mods,
+            "change version of modpack": change_modpack_ver,
             "add must-haves to modpack": download_musthaves,
             "remove modpack": remove_modpack,
         },

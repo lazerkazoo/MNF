@@ -7,7 +7,7 @@
 # Requirements
 - [python](https://www.python.org/downloads/)
 - [java](https://www.java.com/en/download/) (for installing fabric)
-- [curl](https://curl.se/download.html) (for downloading files) (preinstalled on most linux distros)
+- [curl](https://curl.se/download.html) (for downloading files) (preinstalled on linux)
 
 ## Python dependencies
 - requests
