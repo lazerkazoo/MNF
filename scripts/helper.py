@@ -141,8 +141,7 @@ def init_data(type=None, version=None, modpack=None):
 
         if type != "modpack":
             modpack = choose(get_modpacks(), "modpack")
-            index_file = f"{get_mrpack(modpack)}/modrinth.index.json"
-            version = json.load(open(index_file))["dependencies"]["minecraft"]
+            version = get_mcversion(get_modrinth_index(get_mrpack(modpack)))
 
     if version is None:
         version = input("mc version [just press enter to search all versions] -> ")
@@ -172,7 +171,7 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
                     print(colored(f"downloading {file_name}...", "yellow"))
                 download_file(file_url, target)
 
-                for m in range(8):
+                for m in range(10):
                     try:
                         generate_new_entry(
                             (type, get_modrinth_index(get_mrpack(modpack)), modpack),
@@ -398,7 +397,7 @@ def install_modpack(ask_install_musthaves=False):
     )
 
     copy(
-        f"{MC_DIR}/libraries/net/fabricmc/intermediary/{mc}/intermediary-{mc}.jar",
+        f"{MC_DIR}/libraries/net/fabricmc/fabric-loader/{fabric}/fabric-loader-{fabric}.jar",
         f"{MC_DIR}/versions/{name}/{name}.jar",
     )
 

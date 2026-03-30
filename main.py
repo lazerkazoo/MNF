@@ -177,7 +177,7 @@ def export_modpack():
 def remove_mod(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
-    pack_index = get_modrinth_index(f"{get_mrpack(pack)}")
+    pack_index = get_modrinth_index(get_mrpack(pack))
     mods_dir = f"{INST_DIR}/{pack}/mods"
     mods = []
 
