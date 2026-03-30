@@ -32,14 +32,15 @@
     "zoomify"
   ],
   "resourcepack": [
-    "fancy-crops",
+    "better-leaves",
     "clearwater",
     "enchant-icons-countxd",
+    "fancy-crops",
     "fresh-animations",
     "fresh-skeleton-physics",
     "low-fire-pack",
-    "better-leaves",
-    "outline-ores"
+    "outline-ores",
+    "qraftys-capitalized-font"
   ],
   "shader": []
 }

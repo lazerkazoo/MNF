@@ -69,12 +69,14 @@ def confirm(txt="r u sure"):
 
 
 def choose(lst: list, stuff="stuff"):
+    print()
     final = ""
     if len(lst) <= 0:
         print(colored(f"no {stuff}s installed!", "yellow"))
         exit()
     for n, i in enumerate(lst):
         print(f"[{n + 1}] {i}")
+    print()
 
     choice = input("choose [can enter name] -> ")
     try:
@@ -90,7 +92,6 @@ def choose(lst: list, stuff="stuff"):
             if ratio > current:
                 current = ratio
                 final = i
-
     return final
 
 
@@ -246,7 +247,6 @@ def download_depends(file: str, pack: str):
     for dep in ["minecraft", "java", "sodium"]:
         if dep in depends:
             depends.pop(dep)
-
     for i in list(depends):
         if i.startswith("fabric"):
             depends.pop(i)
@@ -255,7 +255,6 @@ def download_depends(file: str, pack: str):
         return
 
     print(colored("downloading dependencies...", "yellow"))
-
     for dep in depends:
         download_first_from_modrinth(pack, dep, "mod", True)
 
@@ -439,8 +438,8 @@ def install_modpack(ask_install_musthaves=False):
         "lastUsed": timestamp,
         "icon": "Grass",
         "name": name,
-        "type": "custom",
-        "lastVersionId": mc,
+        "type": "modded",
+        "lastVersionId": name,
         "gameDir": f"{INST_DIR}/{name}",
     }
 
