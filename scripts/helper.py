@@ -238,19 +238,15 @@ def download_first_from_modrinth(pack: str, query: str, type: str, strict=False)
 def download_depends(file: str, pack: str):
     with ZipFile(file, "r") as z:
         try:
-            data = json.loads(z.read("fabric.mod.json"))
+            data: dict = json.loads(z.read("fabric.mod.json"))
+            depends: list = session.get(
+                f"https://api.modrinth.com/v2/project/{data['id']}/dependencies"
+            ).json()
         except Exception:
             return
-
-    depends = data["depends"]
-    for dep in ["minecraft", "java", "sodium"]:
-        if dep in depends:
-            depends.pop(dep)
-    for i in list(depends):
-        if i.startswith("fabric"):
-            depends.pop(i)
-
-    if not depends:
+    if "fabric-api" in depends:
+        depends.remove("fabric-api")
+    if len(depends) == 0:
         return
 
     print(colored("downloading dependencies...", "yellow"))

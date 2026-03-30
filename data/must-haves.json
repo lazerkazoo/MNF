@@ -9,6 +9,7 @@
     "continuity",
     "eating-animation",
     "entityculling",
+    "fabric-api",
     "fabric-language-kotlin",
     "ferrite-core",
     "gputape",
