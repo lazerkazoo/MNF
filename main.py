@@ -45,16 +45,19 @@ def edit_musthaves(todo=None, to_edit=None):
         params = create_params(to_edit, query=query)
         hits = get_hits(params)
 
-        for num, hit in enumerate(hits):
-            print(f"[{num + 1}] {hit['title']}")
-        choice = hits[int(input("choose -> ")) - 1]
+        hit_titles = []
+        for h in hits:
+            hit_titles.append(h["title"])
+        choice = hits[hit_titles.index(choose(hit_titles))]
 
-        file[to_edit][choice["slug"]] = choice["project_id"]
+        stuff.append(choice["slug"])
     else:
-        choice = choose(list(file[to_edit].keys()), to_edit)
+        choice = choose(list(stuff), to_edit)
         if confirm(f"remove {choice}"):
-            file[to_edit].pop(choice)
+            stuff.remove(choice)
 
+    stuff = list(set(stuff))
+    stuff.sort()
     file[to_edit] = stuff
     save_json("data/must-haves.json", file)
     if confirm("another"):
@@ -241,7 +244,7 @@ def search_modrinth(type=None, version=None, modpack=None):
 
     choice = hits[hit_titles.index(choose(hit_titles, data[0]))]
 
-    versions = get_versions(choice["project_id"])
+    versions = get_versions(choice["slug"])
 
     download_from_modrinth(data[0], data[1], data[2], versions)
     if data[0] != "modpack":

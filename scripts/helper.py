@@ -31,7 +31,7 @@ def load_json(file: str):
 
 def download_file(url: str, dest: str):
     makedirs(dirname(dest), exist_ok=True)
-    run(["curl", url, "--output", dest, "--silent"])
+    run(["curl", url, "-o", dest, "-s"])
 
 
 def extract(file: str, extr_dir: str):
@@ -118,10 +118,8 @@ def get_hits(params):
     return response.json().get("hits", [])
 
 
-def get_versions(project_id):
-    return session.get(
-        f"https://api.modrinth.com/v2/project/{project_id}/version"
-    ).json()
+def get_versions(slug):
+    return session.get(f"https://api.modrinth.com/v2/project/{slug}/version").json()
 
 
 def double_check_version(versions, version):
@@ -230,16 +228,19 @@ def download_first_from_modrinth(pack: str, query: str, type: str, strict=False)
     if strict and hits[0]["slug"] != query:
         return
 
-    project_id = hits[0]["project_id"]
+    slug = hits[0]["slug"]
 
-    versions = get_versions(project_id)
+    versions = get_versions(slug)
 
     download_from_modrinth(type, version, pack, versions, False)
 
 
 def download_depends(file: str, pack: str):
     with ZipFile(file, "r") as z:
-        data = json.loads(z.read("fabric.mod.json"))
+        try:
+            data = json.loads(z.read("fabric.mod.json"))
+        except Exception:
+            return
 
     depends = data["depends"]
     for dep in ["minecraft", "java", "sodium"]:
@@ -259,19 +260,18 @@ def download_depends(file: str, pack: str):
         download_first_from_modrinth(pack, dep, "mod", True)
 
 
-def download_musthave(type, mc, pack, name, names):
-    # thread = Thread(
-    #     target=download_from_modrinth,
-    #     args=(
-    #         type,
-    #         mc,
-    #         pack,
-    #         get_versions(names[name]),
-    #     ),
-    # )
-    # thread.start()
-    # thread.join()
-    download_from_modrinth(type, mc, pack, get_versions(names[name]))
+def download_musthave(type, mc, pack, name):
+    thread = Thread(
+        target=download_from_modrinth,
+        args=(
+            type,
+            mc,
+            pack,
+            get_versions(name),
+        ),
+    )
+    thread.start()
+    thread.join()
 
 
 def download_musthaves(pack=None):
@@ -283,10 +283,9 @@ def download_musthaves(pack=None):
     st = time()
 
     for type in must_haves:
-        names = must_haves[type]
-        for i, name in enumerate(names):
+        for name in must_haves[type]:
             threads.append(
-                Thread(target=download_musthave, args=(type, mc, pack, name, names))
+                Thread(target=download_musthave, args=(type, mc, pack, name))
             )
 
     for thread in threads:
@@ -303,8 +302,8 @@ def update_mod(file_entry: dict, mc: str, new_files: list, pack: str, pack_index
     index = pack_index["files"].index(file_entry)
     old_path = pack_index["files"][index]["path"]
 
-    project_id = url.split("/data/")[1].split("/")[0]
-    versions = get_versions(project_id)
+    slug = url.split("/data/")[1].split("/")[0]
+    versions = get_versions(slug)
     latest_version = None
 
     for v in versions:
@@ -441,7 +440,7 @@ def install_modpack(ask_install_musthaves=False):
         "icon": "Grass",
         "name": name,
         "type": "custom",
-        "lastVersionId": name,
+        "lastVersionId": mc,
         "gameDir": f"{INST_DIR}/{name}",
     }
 
