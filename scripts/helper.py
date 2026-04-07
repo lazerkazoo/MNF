@@ -162,35 +162,36 @@ def download_from_modrinth(type, version, modpack, versions, print_downloading=T
             file_url = file_info["url"]
             file_name = file_info["filename"]
 
-            if type != "modpack":
-                type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
-                makedirs(abspath(type_dir), exist_ok=True)
-                target = f"{type_dir}/{file_name}"
+            if type == "modpack":
+                tmp_path = f"/tmp/{file_name}"
+                download_file(file_url, tmp_path)
 
-                if print_downloading:
-                    print(colored(f"downloading {file_name}...", "yellow"))
-                download_file(file_url, target)
-
-                for m in range(10):
-                    try:
-                        generate_new_entry(
-                            (type, get_modrinth_index(get_mrpack(modpack)), modpack),
-                            (file_name, file_url),
-                            v,
-                        )
-                        break
-                    except Exception:
-                        sleep(random.random() * 1 + 0.5)
-
-                if type == "mod":
-                    download_depends(target, modpack)
+                extract(tmp_path, "modpack")
+                install_modpack(True)
                 break
 
-            tmp_path = f"/tmp/{file_name}"
-            download_file(file_url, tmp_path)
+            type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
+            target = f"{type_dir}/{file_name}"
+            if exists(target):
+                break
 
-            extract(tmp_path, "modpack")
-            install_modpack(True)
+            if print_downloading:
+                print(colored(f"downloading {file_name}...", "yellow"))
+            download_file(file_url, target)
+
+            for m in range(10):
+                try:
+                    generate_new_entry(
+                        (type, get_modrinth_index(get_mrpack(modpack)), modpack),
+                        (file_name, file_url),
+                        v,
+                    )
+                    break
+                except Exception:
+                    sleep(random.random() * 1 + 0.5)
+
+            if type == "mod":
+                download_depends(target, modpack)
             break
 
 
