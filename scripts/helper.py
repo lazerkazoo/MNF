@@ -244,14 +244,12 @@ def download_depends(file: str, pack: str):
             ).json()
         except Exception:
             return
-    if "fabric-api" in depends:
-        depends.remove("fabric-api")
     if len(depends) == 0:
         return
 
     print(colored("downloading dependencies...", "yellow"))
-    for dep in depends:
-        download_first_from_modrinth(pack, dep, "mod", True)
+    for dep in depends["projects"]:
+        download_first_from_modrinth(pack, dep["slug"], "mod", True)
 
 
 def download_musthave(type, mc, pack, name):
