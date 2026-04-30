@@ -1,7 +1,7 @@
-# Compatability
-- [x] linux
-- [ ] mac (probably just not tested)
-- [ ] windows
+# Compatibility
+- [x] Linux
+- [ ] Mac (probably just not tested)
+- [ ] Windows
 - official mc launcher from [minecraft.net](https://www.minecraft.net/en-us/download) or [flathub.org](https://flathub.org/en/apps/com.mojang.Minecraft) (will most likely "work" with other launchers but the modpack launch option will not show up)
 
 # Requirements
