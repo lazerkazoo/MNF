@@ -185,17 +185,14 @@ def remove_mod(pack=None):
         mods.append(m)
 
     mods.sort()
-    mod = choose(mods, "mod")
+    mod = choose(mods, "mod", True)
 
-    if confirm(f"remove {mod}"):
-        remove(f"{mods_dir}/{mod}")
+    remove(f"{mods_dir}/{mod}")
 
-        pack_index["files"] = [
-            f
-            for f in pack_index["files"]
-            if not f["path"].lower().endswith(mod.lower())
-        ]
-        save_json(f"{get_mrpack(pack)}/modrinth.index.json", pack_index)
+    pack_index["files"] = [
+        f for f in pack_index["files"] if not f["path"].lower().endswith(mod.lower())
+    ]
+    save_json(f"{get_mrpack(pack)}/modrinth.index.json", pack_index)
 
     if confirm("another"):
         remove_mod(pack)

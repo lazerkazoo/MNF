@@ -5,6 +5,7 @@ from os import listdir, makedirs, remove, rename
 from os.path import dirname, exists
 from shutil import copy, copytree, rmtree
 from subprocess import run
+from sys import exit
 from threading import Thread
 from time import sleep, time
 from uuid import uuid4
@@ -64,11 +65,12 @@ def get_mcversion(index):
     return index["dependencies"]["minecraft"]
 
 
-def confirm(txt="r u sure"):
-    return input(f"{txt} [y/n] -> ") in ["Y", "y", ""]
+def confirm(txt="r u sure", strict=False):
+    inp = input(f"{txt} [y/n] -> ").lower()
+    return inp in ["y"] if strict else inp in ["y", ""]
 
 
-def choose(lst: list, stuff="stuff"):
+def choose(lst: list, stuff="stuff", check=False):
     print()
     final = ""
     if len(lst) <= 0:
@@ -83,7 +85,7 @@ def choose(lst: list, stuff="stuff"):
         choice = int(choice) - 1
         if choice > len(lst) - 1 or choice < 0:
             print(colored("that is not an option try again", "red"))
-            return choose(lst, stuff)
+            return choose(lst, stuff, check)
         final = lst[choice]
     except Exception:
         current = 0
@@ -92,6 +94,8 @@ def choose(lst: list, stuff="stuff"):
             if ratio > current:
                 current = ratio
                 final = i
+    if check and not confirm(final):
+        return choose(lst, stuff, check)
     return final
 
 
@@ -425,7 +429,7 @@ def install_modpack(ask_install_musthaves=False):
     profiles = launcher_data.setdefault("profiles", {})
 
     profile_id = uuid4().hex
-    timestamp = datetime.utcnow().isoformat() + "Z"
+    timestamp = datetime.now().isoformat() + "Z"
 
     profiles[profile_id] = {
         "created": timestamp,
