@@ -2,7 +2,7 @@ import json
 import random
 from datetime import datetime
 from os import listdir, makedirs, remove, rename
-from os.path import abspath, dirname, exists
+from os.path import dirname, exists
 from shutil import copy, copytree, rmtree
 from subprocess import run
 from threading import Thread
@@ -146,7 +146,7 @@ def init_data(type=None, version=None, modpack=None):
     if version is None:
         version = input("mc version [just press enter to search all versions] -> ")
 
-    return (type, version, modpack)
+    return {"type": type, "version": version, "modpack": modpack}
 
 
 def download_from_modrinth(type, version, modpack, versions, print_downloading=True):

@@ -86,7 +86,7 @@ def custom_modpack():
     name = input("name -> ")
     version = input("minecraft version -> ")
 
-    print(colored(f"gettings latest fabric version for mc {version}", "yellow"))
+    print(colored(f"getting latest fabric version for mc {version}", "yellow"))
     url = f"https://meta.fabricmc.net/v2/versions/loader/{version}"
     response = session.get(url)
 
@@ -208,8 +208,6 @@ def remove_modpack(pack=None):
 
     launcher_data = load_json(profiles_file)
 
-    profiles: dict = launcher_data["profiles"]
-
     profiles = launcher_data.get("profiles", {})
 
     for i in list(profiles.keys()):
@@ -232,24 +230,24 @@ def search_modrinth(type=None, version=None, modpack=None):
     remove_temps()
 
     data = init_data(type, version, modpack)
-    hits = get_hits(create_params(data[0], data[1]))
+    hits = get_hits(create_params(data["type"], data["version"]))
 
     if not hits:
-        print(colored(f"no {data[0]}s found", "red"))
-        return search_modrinth(data[0], data[1])
+        print(colored(f"no {data['type']}s found", "red"))
+        return search_modrinth(data["type"], data["version"])
 
     hit_titles = []
     for h in hits:
         hit_titles.append(h["title"])
 
-    choice = hits[hit_titles.index(choose(hit_titles, data[0]))]
+    choice = hits[hit_titles.index(choose(hit_titles, data["type"]))]
 
     versions = get_versions(choice["slug"])
 
-    download_from_modrinth(data[0], data[1], data[2], versions)
-    if data[0] != "modpack":
+    download_from_modrinth(data["type"], data["version"], data["modpack"], versions)
+    if data["type"] != "modpack":
         if confirm("another"):
-            search_modrinth(data[0], data[1], data[2])
+            search_modrinth(data["type"], data["version"], data["modpack"])
 
 
 def main():
