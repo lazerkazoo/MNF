@@ -1,10 +1,9 @@
 import json
-import random
 from datetime import datetime
 from os import listdir, makedirs, remove, rename
 from os.path import dirname, exists
-from shutil import copy, copytree, rmtree
-from subprocess import run
+from shutil import copytree, rmtree, copy
+from subprocess import run, check_output
 from sys import exit
 from threading import Thread
 from time import sleep, time
@@ -61,7 +60,9 @@ def get_modrinth_index(folder="/tmp/modpack"):
     return load_json(f"{folder}/modrinth.index.json")
 
 
-def get_mcversion(index):
+def get_mcversion(index=None):
+    if isinstance(index, str):
+        index = get_modrinth_index(get_mrpack(index))
     return index["dependencies"]["minecraft"]
 
 
@@ -123,8 +124,11 @@ def get_hits(params):
     return response.json().get("hits", [])
 
 
-def get_versions(slug):
-    return session.get(f"https://api.modrinth.com/v2/project/{slug}/version").json()
+def get_versions(slug, mc=None, mod=True):
+    url = f"https://api.modrinth.com/v2/project/{slug}/version"
+    if mod:
+        url = f"https://api.modrinth.com/v2/project/{slug}/version?game_versions=%5B%22{mc}%22%5D&loaders=%5B%22fabric%22%5D"
+    return json.loads(check_output(["curl", "-X", "GET", "-s", url]))
 
 
 def double_check_version(versions, version):
@@ -145,7 +149,7 @@ def init_data(type=None, version=None, modpack=None):
 
         if type != "modpack":
             modpack = choose(get_modpacks(), "modpack")
-            version = get_mcversion(get_modrinth_index(get_mrpack(modpack)))
+            version = get_mcversion(modpack)
 
     if version is None:
         version = input("mc version [just press enter to search all versions] -> ")
@@ -153,50 +157,44 @@ def init_data(type=None, version=None, modpack=None):
     return {"type": type, "version": version, "modpack": modpack}
 
 
-def download_from_modrinth(type, version, modpack, versions, print_downloading=True):
-    version = double_check_version(versions, version)
-    for v in versions:
-        condition = (
-            version in v["game_versions"] and "fabric" in v["loaders"]
-            if type in ["mod", "modpack"]
-            else True
-        )
-        if condition:
-            file_info = v["files"][0]
-            file_url = file_info["url"]
-            file_name = file_info["filename"]
+def download_from_modrinth(type, modpack, versions, print_downloading=True):
+    if len(versions) <= 0:
+        return
+    v = versions[0]
 
-            if type == "modpack":
-                tmp_path = f"/tmp/{file_name}"
-                download_file(file_url, tmp_path)
+    # setup file data
+    file_info = v["files"][0]
+    file_url = file_info["url"]
+    file_name = file_info["filename"]
 
-                extract(tmp_path, "modpack")
-                install_modpack(True)
-                break
+    # modpack stuff
+    if type == "modpack":
+        tmp_path = f"/tmp/{file_name}"
+        download_file(file_url, tmp_path)
 
-            type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
-            target = f"{type_dir}/{file_name}"
-            if exists(target):
-                break
+        extract(tmp_path, "modpack")
+        install_modpack(True)
+        return
 
-            if print_downloading:
-                print(colored(f"downloading {file_name}...", "yellow"))
-            download_file(file_url, target)
+    # setup target path
+    type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
+    target = f"{type_dir}/{file_name}"
+    if exists(target):
+        return
 
-            for m in range(10):
-                try:
-                    generate_new_entry(
-                        (type, get_modrinth_index(get_mrpack(modpack)), modpack),
-                        (file_name, file_url),
-                        v,
-                    )
-                    break
-                except Exception:
-                    sleep(random.random() * 1 + 0.5)
+    # download
+    if print_downloading:
+        print(colored(f"downloading {file_name}...", "yellow"))
+    download_file(file_url, target)
 
-            if type == "mod":
-                download_depends(target, modpack)
-            break
+    generate_new_entry(
+        (type, get_modrinth_index(get_mrpack(modpack)), modpack),
+        (file_name, file_url),
+        v,
+    )
+
+    if type == "mod":
+        download_depends(target, modpack)
 
 
 def generate_new_entry(data, file_data, v):
@@ -221,86 +219,56 @@ def generate_new_entry(data, file_data, v):
     )
 
 
-def download_first_from_modrinth(pack: str, query: str, type: str, strict=False):
-    index = get_modrinth_index(get_mrpack(pack))
-    version = get_mcversion(index)
-
-    params = create_params(type, version, query)
-    hits = get_hits(params)
-
-    if not hits:
-        return
-    if strict and hits[0]["slug"] != query:
-        return
-
-    slug = hits[0]["slug"]
-
-    versions = get_versions(slug)
-
-    download_from_modrinth(type, version, pack, versions, False)
-
-
 def download_depends(file: str, pack: str):
     with ZipFile(file, "r") as z:
         try:
             data: dict = json.loads(z.read("fabric.mod.json"))
-            depends: list = session.get(
-                f"https://api.modrinth.com/v2/project/{data['id']}/dependencies"
-            ).json()
+            depends: list = (
+                session.get(
+                    f"https://api.modrinth.com/v2/project/{data['id']}/dependencies"
+                )
+                .json()
+                .get("projects", [])
+            )
         except Exception:
             return
     if len(depends) == 0:
         return
 
     print(colored("downloading dependencies...", "yellow"))
-    for dep in depends["projects"]:
-        download_first_from_modrinth(pack, dep["slug"], "mod", True)
-
-
-def download_musthave(type, mc, pack, name):
-    thread = Thread(
-        target=download_from_modrinth,
-        args=(
-            type,
-            mc,
+    for dep in depends:
+        if not dep["client_side"] == "required":
+            continue
+        download_from_modrinth(
+            "mod",
             pack,
-            get_versions(name),
-        ),
-    )
-    thread.start()
-    thread.join()
+            get_versions(dep["slug"], get_mcversion(pack)),
+        )
 
 
 def download_musthaves(pack=None):
-    threads: list[Thread] = []
-
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
-    mc = get_mcversion(get_modrinth_index(get_mrpack(pack)))
+    mc = get_mcversion(pack)
     st = time()
 
     for type in must_haves:
-        for name in must_haves[type]:
-            threads.append(
-                Thread(target=download_musthave, args=(type, mc, pack, name))
-            )
-
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
+        for slug in must_haves[type]:
+            download_from_modrinth(type, pack, get_versions(slug, mc, type == "mod"))
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
 
-def update_mod(file_entry: dict, mc: str, new_files: list, pack: str, pack_index: dict):
+def update_mod(file_entry: dict, new_files: list, pack: str):
     new_files.append(file_entry)
     url = file_entry["downloads"][0]
+    pack_index = get_modrinth_index(get_mrpack(pack))
+    mc = get_mcversion(pack_index)
     index = pack_index["files"].index(file_entry)
     old_path = pack_index["files"][index]["path"]
 
     slug = url.split("/data/")[1].split("/")[0]
-    versions = get_versions(slug)
+    versions = get_versions(slug, mc)
     latest_version = None
 
     for v in versions:
@@ -347,6 +315,13 @@ def update_mod(file_entry: dict, mc: str, new_files: list, pack: str, pack_index
     new_files.append(file_entry)
 
 
+def get_latest_fabric(mc):
+    print(colored(f"getting latest fabric version for mc {mc}", "yellow"))
+    return session.get(f"https://meta.fabricmc.net/v2/versions/loader/{mc}").json()[0][
+        "loader"
+    ]["version"]
+
+
 def install_fabric(mc: str, loader: str = ""):
     print("installing fabric...")
     if not exists("/tmp/fabric-installer.jar"):
@@ -373,17 +348,7 @@ def install_fabric(mc: str, loader: str = ""):
     run(cmd)
 
 
-def install_modpack(ask_install_musthaves=False):
-    st = time()
-    data = get_modrinth_index()
-    fabric = data["dependencies"]["fabric-loader"]
-    mc = get_mcversion(data)
-    name = data["name"]
-    files = data["files"]
-    dir = f"{INST_DIR}/{name}"
-    copytree("/tmp/modpack/overrides/", f"{INST_DIR}/{name}/", dirs_exist_ok=True)
-    makedirs(f"{dir}/mods", exist_ok=True)
-
+def setup_fabric(mc, fabric, name):
     install_fabric(mc, fabric)
     copytree(
         f"{MC_DIR}/versions/fabric-loader-{fabric}-{mc}",
@@ -399,6 +364,20 @@ def install_modpack(ask_install_musthaves=False):
         f"{MC_DIR}/libraries/net/fabricmc/fabric-loader/{fabric}/fabric-loader-{fabric}.jar",
         f"{MC_DIR}/versions/{name}/{name}.jar",
     )
+
+
+def install_modpack(ask_install_musthaves=False):
+    st = time()
+    data = get_modrinth_index()
+    fabric = data["dependencies"]["fabric-loader"]
+    mc = get_mcversion(data)
+    name = data["name"]
+    files = data["files"]
+    dir = f"{INST_DIR}/{name}"
+    copytree("/tmp/modpack/overrides/", f"{INST_DIR}/{name}/", dirs_exist_ok=True)
+    makedirs(f"{dir}/mods", exist_ok=True)
+
+    setup_fabric(mc, fabric, name)
 
     with open(f"{MC_DIR}/versions/{name}/{name}.json", "r") as f:
         version_data = json.load(f)
@@ -450,6 +429,5 @@ def install_modpack(ask_install_musthaves=False):
     )
     copytree("/tmp/modpack", f"{dir}/mrpack", dirs_exist_ok=True)
 
-    if ask_install_musthaves:
-        if confirm("download must-haves"):
-            download_musthaves(name)
+    if ask_install_musthaves and confirm("download must-haves"):
+        download_musthaves(name)

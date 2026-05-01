@@ -11,7 +11,6 @@ from scripts.helper import (
     choose,
     confirm,
     create_params,
-    download_first_from_modrinth,
     download_from_modrinth,
     download_musthaves,
     extract,
@@ -27,6 +26,7 @@ from scripts.helper import (
     remove_temps,
     save_json,
     update_mod,
+    get_latest_fabric,
 )
 
 session = requests.session()
@@ -64,12 +64,13 @@ def edit_musthaves(todo=None, to_edit=None):
         edit_musthaves(todo, to_edit)
 
 
-def change_modpack_ver():
+def change_modpack_ver(skip=False):
     pack = choose(get_modpacks(), "modpack")
-    version = input("choose version -> ")
     index_data = get_modrinth_index(get_mrpack(pack))
+    version = input("choose version -> ") if not skip else get_mcversion(index_data)
 
     index_data["dependencies"]["minecraft"] = version
+    index_data["dependencies"]["fabric-loader"] = get_latest_fabric(version)
 
     save_json(f"{get_mrpack(pack)}/modrinth.index.json", index_data)
     copytree(f"{get_mrpack(pack)}", "/tmp/modpack")
@@ -78,7 +79,7 @@ def change_modpack_ver():
     remove_modpack(pack)
 
     install_modpack()
-    download_first_from_modrinth(pack, "fabric api", "mod")
+    download_from_modrinth("mod", pack, get_versions("fabric-api", version))
     update_modpack_mods(pack)
 
 
@@ -86,36 +87,23 @@ def custom_modpack():
     name = input("name -> ")
     version = input("minecraft version -> ")
 
-    print(colored(f"getting latest fabric version for mc {version}", "yellow"))
-    url = f"https://meta.fabricmc.net/v2/versions/loader/{version}"
-    response = session.get(url)
-
-    if response.status_code != 200:
-        print(colored("error fetching Fabric data.", "red"))
-        return
-
-    data = response.json()
-
-    if not data:
-        print(colored("no Fabric loader found for that version.", "red"))
-        return
-
-    latest_loader = data[0]["loader"]["version"]
-
     index_data = {
         "formatVersion": 1,
         "game": "minecraft",
         "name": name,
         "versionId": "1.0",
         "files": [],
-        "dependencies": {"fabric-loader": latest_loader, "minecraft": version},
+        "dependencies": {
+            "fabric-loader": get_latest_fabric(version),
+            "minecraft": version,
+        },
     }
     makedirs("/tmp/modpack/overrides/config")
     save_json("/tmp/modpack/modrinth.index.json", index_data)
 
     install_modpack()
 
-    download_first_from_modrinth(name, "fabric api", "mod")
+    download_from_modrinth("mod", name, get_versions("fabric-api", version))
 
     download_musthaves(name)
 
@@ -126,12 +114,11 @@ def update_modpack_mods(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpacks")
     pack_index = get_modrinth_index(get_mrpack(pack))
-    mc_version = get_mcversion(pack_index)
 
     new_files = []
     for num, file_entry in enumerate(pack_index["files"]):
         print(colored(f"[{num + 1}/{len(pack_index['files'])}]", "yellow"))
-        update_mod(file_entry, mc_version, new_files, pack, pack_index)
+        update_mod(file_entry, new_files, pack)
 
     print(colored(f"finished updating in {round(time() - st, 1)}s!", "green"))
 
@@ -200,7 +187,7 @@ def remove_mod(pack=None):
 
 def remove_modpack(pack=None):
     if pack is None:
-        pack = choose(get_modpacks(), "modpack")
+        pack = choose(get_modpacks(), "modpack", True)
     profiles_file = f"{MC_DIR}/launcher_profiles.json"
 
     launcher_data = load_json(profiles_file)
@@ -213,14 +200,13 @@ def remove_modpack(pack=None):
 
     launcher_data["profiles"] = profiles
 
-    if confirm("r u sure"):
-        save_json(profiles_file, launcher_data)
-        for path in [
-            f"{INST_DIR}/{pack}",
-            f"{MC_DIR}/versions/{pack}",
-        ]:
-            if exists(path):
-                rmtree(path)
+    save_json(profiles_file, launcher_data)
+    for path in [
+        f"{INST_DIR}/{pack}",
+        f"{MC_DIR}/versions/{pack}",
+    ]:
+        if exists(path):
+            rmtree(path)
 
 
 def search_modrinth(type=None, version=None, modpack=None):
@@ -239,12 +225,14 @@ def search_modrinth(type=None, version=None, modpack=None):
 
     choice = hits[hit_titles.index(choose(hit_titles, data["type"]))]
 
-    versions = get_versions(choice["slug"])
+    versions = get_versions(
+        choice["slug"], data["version"], data["type"] in ["mod", "modpack"]
+    )
 
-    download_from_modrinth(data["type"], data["version"], data["modpack"], versions)
-    if data["type"] != "modpack":
-        if confirm("another"):
-            search_modrinth(data["type"], data["version"], data["modpack"])
+    download_from_modrinth(data["type"], data["modpack"], versions)
+    if data["type"] != "modpack" and confirm("another"):
+        search_modrinth(data["type"], data["version"], data["modpack"])
+    return None
 
 
 def main():
@@ -258,7 +246,7 @@ def main():
         "edit must-haves": edit_musthaves,
         "modpack (expands)": {
             "create custom modpack": custom_modpack,
-            "update modpack mods": update_modpack_mods,
+            "update modpack mods": lambda: change_modpack_ver(True),
             "change version of modpack": change_modpack_ver,
             "add must-haves to modpack": download_musthaves,
             "remove modpack": remove_modpack,
