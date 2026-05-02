@@ -158,7 +158,7 @@ def init_data(type=None, version=None, modpack=None):
 
 
 def download_from_modrinth(type, modpack, versions, print_downloading=True):
-    if len(versions) <= 0:
+    if len(versions) == 0:
         return
     v = versions[0]
 
@@ -428,3 +428,5 @@ def install_modpack(ask_install_musthaves=False):
 
     if ask_install_musthaves and confirm("download must-haves"):
         download_musthaves(name)
+    if exists(f"{MC_DIR}/options.txt") and confirm("copy options.txt file"):
+        copy(f"{MC_DIR}/options.txt", f"{dir}/options.txt")

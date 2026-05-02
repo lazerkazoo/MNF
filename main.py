@@ -103,8 +103,6 @@ def custom_modpack():
 
     install_modpack()
 
-    download_from_modrinth("mod", name, get_versions("fabric-api", version))
-
     download_musthaves(name)
 
 
