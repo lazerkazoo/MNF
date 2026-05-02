@@ -1,55 +1,111 @@
-# must haves
-- mods/resourcepacks/shaders that u want to automatically download when creating a new modpack (u will be prompted when downloading a modpack, but they will auto install when making your own modpack)
-- u can changeyour must haves by selecting the "edit must-haves" option when starting up
+# MNF User Manual
 
-# search modrinth
-- lets u choose between downloading a mod, modpack, resourcepack, or shaderpack from modrinth
-- if u choose modpack u will be prompted to choose a mc version (1.21, 26.1, ect.), however if u do not choose a version u will be prompted to choose a compatible mc version with the modpack
-- if u choose something besides modpack, u will have to select a modpack to download the item in and it will automatically select the modpack's mc version
-- then you will be prompted for what u want to search for (sodium, worldedit, ect.)
+## Must-Haves
 
-# edit must-haves
-- lets u change musthaves
-- u will be prompted to add or remove a musthave
-- then u will be prompted to choose which kind of musthave u would like to add or remove
-- the add system works similarly to the search modrinth system but it will not prompt u to select a modpack
-- the remove system asks u what u want to remove
+Configure default mods, resource packs, and shaders to automatically download when creating new modpacks.
 
-# modpack (expands)
-## create custom modpack
-- lets u create an empty modpack
-- u will be prompted to choose a name of your modpack
-- then u will be prompted to choose a mc version for your modpack
-- then it will create the modpack and download all compatible musthaves for that mc version
-## update modpack mods
-- lets u update the mods in one of your modpacks
-- u will be prompted to choose a modpack
-- then it will update that modpack's mods. this will also update the fabric-loader version
-## change version of modpack
-- lets u change the mc version of a modpack
-- u will be prompted to choose a modpack
-- then u will be prompted to choose a new mc version
-- then it will change that modpack's mc version and remove *most* incompatible mods
-## add must-haves to modpack
-- lets u add musthaves to a modpack if u didn't when u were making it
-- u will be prompted to choose a modpack
-- then it will install the musthaves to that modpack
-## remove modpack
-- lets u delete a modpack
-- u will be prompted to choose a modpack
-- then it will delete that modpack forever
+**Features:**
+- Automatically installs specified content when creating your own modpacks
+- Prompts for optional downloads when installing third-party modpacks
+- Manage must-haves through the "Edit Must-Haves" option at startup
 
-# remove mod from modpack
-- lets u remove a mod from a modpack
-- u will be prompted to choose a modpack
-- then u will be prompted to delete a mod from that modpack
+---
 
-# download modpack from file
-- lets u download a modpack from a .mrpack file
-- u will be prompted to choose a file from your downloads folder
-- then it will install that modpack
+## Search Modrinth
 
-# export modpack
-- lets u export a modpack to .mrpack to share with people
-- u will be prompted to choose a modpack
-- then it will export that modpack as a .mrpack file in your downloads folder
+Browse and download content directly from Modrinth, including mods, modpacks, resource packs, and shader packs.
+
+**Features:**
+- Choose between downloading mods, modpacks, resource packs, or shader packs
+- **For Modpacks:** Select a Minecraft version (1.21, 1.20.1, etc.), or the system will suggest compatible versions
+- **For Other Content:** Select the target modpack, and the system automatically uses that modpack's Minecraft version
+- Search for specific content (e.g., Sodium, WorldEdit, etc.)
+
+---
+
+## Edit Must-Haves
+
+Manage your must-have content by adding or removing items.
+
+**Features:**
+- Add or remove must-haves interactively
+- Choose content type: mods, resource packs, or shader packs
+- Add system works similarly to Modrinth search (without requiring modpack selection)
+- Remove system allows you to specify items to delete
+
+---
+
+## Modpack Management
+
+### Create Custom Modpack
+
+Create an empty modpack from scratch with your chosen Minecraft version.
+
+**Process:**
+1. Enter a name for your modpack
+2. Select a Minecraft version
+3. System automatically downloads all compatible must-haves
+
+### Update Modpack Mods
+
+Update all mods in an existing modpack to their latest versions.
+
+**Features:**
+- Select the target modpack
+- Automatically updates the Fabric loader version
+- Updates all included mods to compatible versions
+
+### Change Modpack Version
+
+Update a modpack to a different Minecraft version.
+
+**Process:**
+1. Select the target modpack
+2. Choose the new Minecraft version
+3. System updates the version and removes incompatible mods
+
+### Add Must-Haves to Modpack
+
+Retroactively add must-haves to an existing modpack.
+
+**Process:**
+1. Select the target modpack
+2. System installs all must-haves compatible with that modpack
+
+### Remove Modpack
+
+Delete a modpack and all its contents.
+
+**Process:**
+1. Select the modpack to remove
+2. Confirm deletion
+
+---
+
+## Remove Mod from Modpack
+
+Remove a specific mod from one of your modpacks.
+
+**Process:**
+1. Select the target modpack
+2. Choose the mod to delete
+
+---
+
+## Download Modpack from File
+
+Install a modpack from a `.mrpack` file.
+
+**Process:**
+1. Select a `.mrpack` file from your Downloads folder
+2. System installs the modpack with all contents
+
+---
+
+## Export Modpack
+
+Export a modpack as a `.mrpack` file for sharing with others.
+
+**Process:**
+1. Select the modpack to export
+2. File is saved to your Downloads folder
