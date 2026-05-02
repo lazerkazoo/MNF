@@ -1,3 +1,4 @@
+import webbrowser
 from os import listdir, makedirs, remove, rename
 from os.path import exists
 from shutil import copy, copytree, make_archive, rmtree
@@ -255,6 +256,9 @@ def main():
         "remove mod from modpack": remove_mod,
         "download modpack from file": download_modpack,
         "export modpack": export_modpack,
+        "open manual": lambda: webbrowser.open(
+            "https://github.com/lazerkazoo/MNF/blob/master/MANUAL.md"
+        ),
     }
 
     choice = choose(list(options.keys()))

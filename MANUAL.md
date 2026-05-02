@@ -15,7 +15,7 @@ Configure default mods, resource packs, and shaders to automatically download wh
 
 Browse and download content directly from Modrinth, including mods, modpacks, resource packs, and shader packs.
 
-**Features:**
+**Process:**
 - Choose between downloading mods, modpacks, resource packs, or shader packs
 - **For Modpacks:** Select a Minecraft version (1.21, 1.20.1, etc.), or the system will suggest compatible versions
 - **For Other Content:** Select the target modpack, and the system automatically uses that modpack's Minecraft version
@@ -50,7 +50,7 @@ Create an empty modpack from scratch with your chosen Minecraft version.
 
 Update all mods in an existing modpack to their latest versions.
 
-**Features:**
+**Process:**
 - Select the target modpack
 - Automatically updates the Fabric loader version
 - Updates all included mods to compatible versions
@@ -109,3 +109,9 @@ Export a modpack as a `.mrpack` file for sharing with others.
 **Process:**
 1. Select the modpack to export
 2. File is saved to your Downloads folder
+
+---
+
+## Open Manual
+
+Opens this file in the default web browser.
