@@ -82,9 +82,11 @@ def choose(lst: list, stuff="stuff", check=False):
     print()
 
     choice = input("choose [can enter name] -> ")
+    if choice == "0":
+        exit()
     try:
         choice = int(choice) - 1
-        if choice > len(lst) - 1 or choice < 0:
+        if choice > len(lst) - 1:
             print(colored("that is not an option try again", "red"))
             return choose(lst, stuff, check)
         final = lst[choice]

@@ -1,3 +1,4 @@
+from typing import Callable
 import webbrowser
 from os import listdir, makedirs, remove, rename
 from os.path import exists
@@ -267,7 +268,7 @@ def main():
     else:
         options[choice]()
 
-    if confirm("do other stuff"):
+    if confirm("do other stuff") or choice == "open manual":
         main()
 
 
