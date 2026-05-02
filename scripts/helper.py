@@ -2,8 +2,8 @@ import json
 from datetime import datetime
 from os import listdir, makedirs, remove, rename
 from os.path import dirname, exists
-from shutil import copytree, rmtree, copy
-from subprocess import run, check_output
+from shutil import copy, copytree, rmtree
+from subprocess import check_output, run
 from sys import exit
 from threading import Thread
 from time import sleep, time
@@ -60,7 +60,7 @@ def get_modrinth_index(folder="/tmp/modpack"):
     return load_json(f"{folder}/modrinth.index.json")
 
 
-def get_mcversion(index=None):
+def get_mcversion(index: str | dict):
     if isinstance(index, str):
         index = get_modrinth_index(get_mrpack(index))
     return index["dependencies"]["minecraft"]
@@ -219,17 +219,16 @@ def generate_new_entry(data, file_data, v):
     )
 
 
+def get_depends(id) -> list:
+    data = session.get(f"https://api.modrinth.com/v2/project/{id}/dependencies").json()
+    return data.get("projects", [])
+
+
 def download_depends(file: str, pack: str):
     with ZipFile(file, "r") as z:
         try:
             data: dict = json.loads(z.read("fabric.mod.json"))
-            depends: list = (
-                session.get(
-                    f"https://api.modrinth.com/v2/project/{data['id']}/dependencies"
-                )
-                .json()
-                .get("projects", [])
-            )
+            depends = get_depends(data["id"])
         except Exception:
             return
     if len(depends) == 0:
@@ -237,12 +236,10 @@ def download_depends(file: str, pack: str):
 
     print(colored("downloading dependencies...", "yellow"))
     for dep in depends:
-        if not dep["client_side"] == "required":
+        if dep["client_side"] != "required":
             continue
         download_from_modrinth(
-            "mod",
-            pack,
-            get_versions(dep["slug"], get_mcversion(pack)),
+            "mod", pack, get_versions(dep["slug"], get_mcversion(pack)), False
         )
 
 

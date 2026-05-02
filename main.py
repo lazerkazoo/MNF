@@ -15,6 +15,7 @@ from scripts.helper import (
     download_musthaves,
     extract,
     get_hits,
+    get_latest_fabric,
     get_mcversion,
     get_modpacks,
     get_modrinth_index,
@@ -26,7 +27,6 @@ from scripts.helper import (
     remove_temps,
     save_json,
     update_mod,
-    get_latest_fabric,
 )
 
 session = requests.session()
@@ -214,6 +214,7 @@ def search_modrinth(type=None, version=None, modpack=None):
 
     data = init_data(type, version, modpack)
     hits = get_hits(create_params(data["type"], data["version"]))
+    save_json("stuff.json", hits)
 
     if not hits:
         print(colored(f"no {data['type']}s found", "red"))
@@ -225,6 +226,8 @@ def search_modrinth(type=None, version=None, modpack=None):
 
     choice = hits[hit_titles.index(choose(hit_titles, data["type"]))]
 
+    if not data["version"]:
+        data["version"] = choose(choice["versions"])
     versions = get_versions(
         choice["slug"], data["version"], data["type"] in ["mod", "modpack"]
     )
