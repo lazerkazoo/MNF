@@ -31,7 +31,7 @@ def load_json(file: str):
 
 def download_file(url: str, dest: str):
     makedirs(dirname(dest), exist_ok=True)
-    run(["curl", url, "-o", dest, "-s"])
+    run(["curl", url, "-o", dest, "-#"])
 
 
 def extract(file: str, extr_dir: str):
@@ -56,7 +56,7 @@ def get_mrpack(pack: str):
     return f"{INST_DIR}/{pack}/mrpack"
 
 
-def get_modrinth_index(folder="/tmp/modpack"):
+def get_modrinth_index(folder="/tmp/modpack") -> dict:
     return load_json(f"{folder}/modrinth.index.json")
 
 
