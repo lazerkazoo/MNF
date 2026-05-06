@@ -1,4 +1,4 @@
-from json import load
+from json import dump, load
 from os.path import exists, expanduser
 
 HOME = expanduser("~")
@@ -17,5 +17,15 @@ DIRS = {
     "shader": "shaderpacks",
 }
 
-with open("data/must-haves.json", "r") as f:
+MUSTHAVES = "must-haves.json"
+DEF_MUSTHAVES = {
+    "mod": ["fabric-api", "lithium", "modmenu", "sodium", "sodium-extra"],
+    "resourcepack": ["better-leaves", "qraftys-capitalized-font"],
+    "shader": [],
+}
+
+
+if not exists(MUSTHAVES):
+    dump(DEF_MUSTHAVES, open(MUSTHAVES, "w"))
+with open(MUSTHAVES, "r") as f:
     must_haves = load(f)

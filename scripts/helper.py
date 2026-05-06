@@ -14,7 +14,14 @@ import requests
 from fuzzywuzzy import fuzz
 from termcolor import colored
 
-from scripts.constants import DIRS, INST_DIR, MC_DIR, must_haves
+from scripts.constants import (
+    DEF_MUSTHAVES,
+    DIRS,
+    INST_DIR,
+    MC_DIR,
+    MUSTHAVES,
+    must_haves,
+)
 
 session = requests.session()
 

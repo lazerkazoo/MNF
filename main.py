@@ -7,7 +7,7 @@ from time import sleep, time
 import requests
 from termcolor import colored
 
-from scripts.constants import DOWNLOADS, INST_DIR, MC_DIR
+from scripts.constants import DOWNLOADS, INST_DIR, MC_DIR, MUSTHAVES
 from scripts.helper import (
     choose,
     confirm,
@@ -35,7 +35,7 @@ session = requests.session()
 
 
 def edit_musthaves(todo=None, to_edit=None):
-    file = load_json("data/must-haves.json")
+    file = load_json(MUSTHAVES)
     if todo is None:
         todo = choose(["add", "remove"])
     if to_edit is None:
@@ -61,7 +61,7 @@ def edit_musthaves(todo=None, to_edit=None):
     stuff = list(set(stuff))
     stuff.sort()
     file[to_edit] = stuff
-    save_json("data/must-haves.json", file)
+    save_json(MUSTHAVES, file)
     if confirm("another"):
         edit_musthaves(todo, to_edit)
 
