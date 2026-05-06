@@ -57,7 +57,7 @@ def remove_mod(mod, pack):
     pack_index = get_modrinth_index(pack)
     remove(f"{INST_DIR}/{pack}/mods/{mod}")
     for f in pack_index["files"]:
-        if not f["path"].lower() == mod.lower():
+        if f["path"].lower() == mod.lower():
             pack_index["files"].remove(f)
     save_json(f"{get_mrpack(pack)}/modrinth.index.json", pack_index)
 
@@ -234,6 +234,7 @@ def generate_new_entry(data, file_data, v):
             "sha1": v["files"][0]["hashes"]["sha1"],
             "sha512": v["files"][0]["hashes"].get("sha512", ""),
         },
+        "env": {"client": "required", "server": "required"},
         "downloads": [file_data[1]],
         "fileSize": v["files"][0]["size"],
     }
@@ -285,7 +286,7 @@ def download_musthaves(pack=None):
     mc = get_mcversion(pack)
     st = time()
 
-    with ThreadPoolExecutor(max_workers=20) as e:
+    with ThreadPoolExecutor(10) as e:
         for type in must_haves:
             for slug in must_haves[type]:
                 e.submit(
@@ -426,7 +427,7 @@ def install_modpack(ask_install_musthaves=False):
 
     downloads = {i["downloads"][0]: f"{dir}/{i['path']}" for i in files}
 
-    with ThreadPoolExecutor(max_workers=20) as e:
+    with ThreadPoolExecutor(10) as e:
         for num, url in enumerate(downloads):
             e.submit(download_file, url, downloads[url])
             print(
