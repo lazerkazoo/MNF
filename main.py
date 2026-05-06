@@ -2,7 +2,7 @@ import webbrowser
 from os import listdir, makedirs, remove, rename
 from os.path import exists
 from shutil import copy, copytree, make_archive, rmtree
-from time import time
+from time import sleep, time
 
 import requests
 from termcolor import colored
@@ -267,7 +267,8 @@ def main():
     else:
         options[choice]()
 
-    if confirm("do other stuff") or choice == "open manual":
+    if choice == "open manual" or confirm("do other stuff"):
+        sleep(0.2)
         main()
 
 
