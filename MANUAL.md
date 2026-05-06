@@ -2,9 +2,11 @@
 
 ## When Choosing
 - It should look something like this:
+```sh
 [1] option1
 [2] option2
 [3] option3
+```
 - In this example u can choose between option 1 to 3 by typing the respective number. Note that you can also choose by typing the name of the option.
 - You can also exit the program by typing "0"
 

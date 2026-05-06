@@ -34,7 +34,7 @@ Install the following Python packages:
 
 1. Open a terminal in the directory containing `main.py`
 2. Run the following command:
-   ```
+   ```sh
    pip install .
    ```
    (Python must be installed and available in your PATH)
@@ -47,7 +47,7 @@ Install the following Python packages:
 
 1. Open a terminal in the directory containing `main.py`
 2. Execute the following command:
-   ```
+   ```sh
    python main.py
    ```
 
