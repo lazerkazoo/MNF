@@ -31,7 +31,7 @@ def load_json(file: str):
 
 def download_file(url: str, dest: str):
     makedirs(dirname(dest), exist_ok=True)
-    run(["curl", url, "-o", dest, "-#"])
+    run(["curl", url, "-o", dest, "-s"])
 
 
 def extract(file: str, extr_dir: str):
