@@ -2,6 +2,7 @@ import webbrowser
 from os import listdir, makedirs, rename
 from os.path import exists
 from shutil import copy, copytree, make_archive, rmtree
+from subprocess import run
 from time import sleep, time
 
 import requests
@@ -266,4 +267,12 @@ def main():
         main()
 
 
-main()
+if __name__ == "__main__":
+    try:
+        run("java")
+    except Exception:
+        print("java is not installed!")
+        webbrowser.open("https://www.java.com/en/download/")
+        quit()
+    run("clear")
+    main()

@@ -167,7 +167,6 @@ def init_data(type=None, version=None, modpack=None):
 def download_from_modrinth(type, pack, versions, print_downloading=True):
     if len(versions) == 0:
         return
-    save_json("stuff.json", versions)
     v = versions[0]
 
     # setup file data

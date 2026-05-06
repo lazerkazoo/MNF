@@ -19,7 +19,14 @@ DIRS = {
 
 MUSTHAVES = "must-haves.json"
 DEF_MUSTHAVES = {
-    "mod": ["fabric-api", "lithium", "modmenu", "sodium", "sodium-extra"],
+    "mod": [
+        "fabric-api",
+        "lithium",
+        "modmenu",
+        "sodium",
+        "sodium-extra",
+        "fabric-language-kotlin",
+    ],
     "resourcepack": ["better-leaves", "qraftys-capitalized-font"],
     "shader": [],
 }
