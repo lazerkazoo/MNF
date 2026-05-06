@@ -1,4 +1,3 @@
-from typing import Callable
 import webbrowser
 from os import listdir, makedirs, remove, rename
 from os.path import exists
