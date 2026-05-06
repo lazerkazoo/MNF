@@ -1,11 +1,11 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from os import listdir, makedirs, remove, rename
 from os.path import dirname, exists
 from shutil import copy, copytree, rmtree
 from subprocess import check_output, run
 from sys import exit
-from threading import Thread
 from time import sleep, time
 from uuid import uuid4
 from zipfile import ZipFile
@@ -46,6 +46,15 @@ def remove_temps():
     rmtree("/tmp/worlds", ignore_errors=True)
 
 
+def remove_mod(mod, pack):
+    pack_index = get_modrinth_index(pack)
+    remove(f"{INST_DIR}/{pack}/mods/{mod}")
+    for f in pack_index["files"]:
+        if not f["path"].lower() == mod.lower():
+            pack_index["files"].remove(f)
+    save_json(f"{get_mrpack(pack)}/modrinth.index.json", pack_index)
+
+
 def get_modpacks():
     if exists(f"{INST_DIR}"):
         return listdir(f"{INST_DIR}")
@@ -56,8 +65,10 @@ def get_mrpack(pack: str):
     return f"{INST_DIR}/{pack}/mrpack"
 
 
-def get_modrinth_index(folder="/tmp/modpack") -> dict:
-    return load_json(f"{folder}/modrinth.index.json")
+def get_modrinth_index(path="/tmp/modpack") -> dict:
+    if "/" not in path:
+        path = get_mrpack(path)
+    return load_json(f"{path}/modrinth.index.json")
 
 
 def get_mcversion(index: str | dict):
@@ -159,9 +170,10 @@ def init_data(type=None, version=None, modpack=None):
     return {"type": type, "version": version, "modpack": modpack}
 
 
-def download_from_modrinth(type, modpack, versions, print_downloading=True):
+def download_from_modrinth(type, pack, versions, print_downloading=True):
     if len(versions) == 0:
         return
+    save_json("stuff.json", versions)
     v = versions[0]
 
     # setup file data
@@ -179,24 +191,33 @@ def download_from_modrinth(type, modpack, versions, print_downloading=True):
         return
 
     # setup target path
-    type_dir = f"{INST_DIR}/{modpack}/{DIRS[type]}"
+    type_dir = f"{INST_DIR}/{pack}/{DIRS[type]}"
     target = f"{type_dir}/{file_name}"
     if exists(target):
         return
 
     # download
     if print_downloading:
-        print(colored(f"downloading {file_name}...", "yellow"))
+        print(colored(f"downloading {file_name}...", "cyan"))
     download_file(file_url, target)
 
     generate_new_entry(
-        (type, get_modrinth_index(get_mrpack(modpack)), modpack),
+        (type, get_modrinth_index(get_mrpack(pack)), pack),
         (file_name, file_url),
         v,
     )
 
-    if type == "mod":
-        download_depends(target, modpack)
+    if type != "mod":
+        return
+    mods = listdir(type_dir)
+    for i in versions:
+        for f in i["files"]:
+            name = f["filename"]
+            if name not in mods or name == file_name:
+                continue
+            print(colored(f"[old version] removing {name}", "red"))
+            remove_mod(name, pack)
+    download_depends(target, pack)
 
 
 def generate_new_entry(data, file_data, v):
@@ -222,8 +243,13 @@ def generate_new_entry(data, file_data, v):
 
 
 def get_depends(id) -> list:
-    data = session.get(f"https://api.modrinth.com/v2/project/{id}/dependencies").json()
-    return data.get("projects", [])
+    data = session.get(f"https://api.modrinth.com/v2/project/{id}/dependencies")
+    try:
+        data = data.json()
+        return data.get("projects", [])
+    except Exception:
+        pass
+    return []
 
 
 def download_depends(file: str, pack: str):
@@ -248,12 +274,19 @@ def download_depends(file: str, pack: str):
 def download_musthaves(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
+
     mc = get_mcversion(pack)
     st = time()
 
-    for type in must_haves:
-        for slug in must_haves[type]:
-            download_from_modrinth(type, pack, get_versions(slug, mc, type == "mod"))
+    with ThreadPoolExecutor(max_workers=20) as e:
+        for type in must_haves:
+            for slug in must_haves[type]:
+                e.submit(
+                    download_from_modrinth,
+                    type,
+                    pack,
+                    get_versions(slug, mc, type == "mod"),
+                )
 
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
@@ -386,21 +419,16 @@ def install_modpack(ask_install_musthaves=False):
 
     downloads = {i["downloads"][0]: f"{dir}/{i['path']}" for i in files}
 
-    threads = []
-    for num, url in enumerate(downloads):
-        threads.append(Thread(target=download_file, args=(url, downloads[url])))
-
-    for num, thread in enumerate(threads):
-        if num % 20 == 0 and num > 0:
-            threads[num - 20].join()
-        print(
-            colored(
-                f"[{num + 1}/{len(downloads)}] downloading {thread._args[0].split('/')[-1]}",
-                "yellow",
+    with ThreadPoolExecutor(max_workers=20) as e:
+        for num, url in enumerate(downloads):
+            e.submit(download_file, url, downloads[url])
+            print(
+                colored(
+                    f"[{num + 1}/{len(downloads)}] downloading {url}",
+                    "yellow",
+                )
             )
-        )
-        thread.start()
-        sleep(0.02)
+            sleep(0.02)
 
     launcher_data = load_json(f"{MC_DIR}/launcher_profiles.json")
 

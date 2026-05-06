@@ -1,5 +1,5 @@
 import webbrowser
-from os import listdir, makedirs, remove, rename
+from os import listdir, makedirs, rename
 from os.path import exists
 from shutil import copy, copytree, make_archive, rmtree
 from time import sleep, time
@@ -25,6 +25,7 @@ from scripts.helper import (
     init_data,
     install_modpack,
     load_json,
+    remove_mod,
     remove_temps,
     save_json,
     update_mod,
@@ -160,28 +161,21 @@ def export_modpack():
     rename(f"{DOWNLOADS}/{pack}.zip", f"{DOWNLOADS}/{pack}.mrpack")
 
 
-def remove_mod(pack=None):
+def remove_mod_from_pack(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpack")
-    pack_index = get_modrinth_index(get_mrpack(pack))
-    mods_dir = f"{INST_DIR}/{pack}/mods"
     mods = []
 
-    for m in listdir(mods_dir):
+    for m in listdir(f"{INST_DIR}/{pack}/mods"):
         mods.append(m)
 
     mods.sort()
     mod = choose(mods, "mod", True)
 
-    remove(f"{mods_dir}/{mod}")
-
-    pack_index["files"] = [
-        f for f in pack_index["files"] if not f["path"].lower().endswith(mod.lower())
-    ]
-    save_json(f"{get_mrpack(pack)}/modrinth.index.json", pack_index)
+    remove_mod(mod, pack)
 
     if confirm("another"):
-        remove_mod(pack)
+        remove_mod_from_pack(pack)
 
 
 def remove_modpack(pack=None):
@@ -253,7 +247,7 @@ def main():
             "add must-haves to modpack": download_musthaves,
             "remove modpack": remove_modpack,
         },
-        "remove mod from modpack": remove_mod,
+        "remove mod from modpack": remove_mod_from_pack,
         "download modpack from file": download_modpack,
         "export modpack": export_modpack,
         "open manual": lambda: webbrowser.open(
