@@ -15,11 +15,9 @@ from fuzzywuzzy import fuzz
 from termcolor import colored
 
 from scripts.constants import (
-    DEF_MUSTHAVES,
     DIRS,
     INST_DIR,
     MC_DIR,
-    MUSTHAVES,
     must_haves,
 )
 
@@ -149,17 +147,6 @@ def get_versions(slug, mc=None, mod=True):
     if mod:
         url = f"https://api.modrinth.com/v2/project/{slug}/version?game_versions=%5B%22{mc}%22%5D&loaders=%5B%22fabric%22%5D"
     return json.loads(check_output(["curl", "-X", "GET", "-s", url]))
-
-
-def double_check_version(versions, version):
-    all_versions = list({v["game_versions"][0] for v in versions})
-    all_versions.sort()
-    all_versions.reverse()
-
-    if version == "":
-        version = choose(list(reversed(all_versions)), "version")
-
-    return version
 
 
 def init_data(type=None, version=None, modpack=None):
