@@ -1,4 +1,5 @@
 import webbrowser
+from concurrent.futures import ThreadPoolExecutor
 from os import listdir, makedirs, rename
 from os.path import exists
 from shutil import copy, copytree, make_archive, rmtree
@@ -69,7 +70,7 @@ def edit_musthaves(todo=None, to_edit=None):
 
 def change_modpack_ver(skip=False):
     pack = choose(get_modpacks(), "modpack")
-    index_data = get_modrinth_index(get_mrpack(pack))
+    index_data = get_modrinth_index(pack)
     version = input("choose version -> ") if not skip else get_mcversion(index_data)
 
     index_data["dependencies"]["minecraft"] = version
@@ -111,20 +112,14 @@ def custom_modpack():
 
 def update_modpack_mods(pack=None):
     st = time()
-
     if pack is None:
         pack = choose(get_modpacks(), "modpacks")
-    pack_index = get_modrinth_index(get_mrpack(pack))
-
-    new_files = []
-    for num, file_entry in enumerate(pack_index["files"]):
-        print(colored(f"[{num + 1}/{len(pack_index['files'])}]", "yellow"))
-        update_mod(file_entry, new_files, pack)
+    mods = f"{INST_DIR}/{pack}/mods"
+    with ThreadPoolExecutor(10) as e:
+        for file in listdir(mods):
+            e.submit(update_mod, f"{mods}/{file}", pack)
 
     print(colored(f"finished updating in {round(time() - st, 1)}s!", "green"))
-
-    pack_index["files"] = new_files
-    save_json(f"{get_mrpack(pack)}/modrinth.index.json", pack_index)
 
 
 def download_modpack():

@@ -6,7 +6,7 @@ from os.path import dirname, exists
 from shutil import copy, copytree, rmtree
 from subprocess import check_output, run
 from sys import exit
-from time import sleep, time
+from time import time
 from uuid import uuid4
 from zipfile import ZipFile
 
@@ -78,7 +78,7 @@ def get_modrinth_index(path="/tmp/modpack") -> dict:
 
 def get_mcversion(index: str | dict):
     if isinstance(index, str):
-        index = get_modrinth_index(get_mrpack(index))
+        index = get_modrinth_index(index)
     return index["dependencies"]["minecraft"]
 
 
@@ -194,11 +194,7 @@ def download_from_modrinth(type, pack, versions, print_downloading=True):
         print(colored(f"downloading {file_name}...", "cyan"))
     download_file(file_url, target)
 
-    generate_new_entry(
-        (type, get_modrinth_index(get_mrpack(pack)), pack),
-        (file_name, file_url),
-        v,
-    )
+    generate_new_entry(type, get_modrinth_index(pack), pack, file_url, file_name, v)
 
     if type != "mod":
         return
@@ -213,26 +209,26 @@ def download_from_modrinth(type, pack, versions, print_downloading=True):
     download_depends(target, pack)
 
 
-def generate_new_entry(data, file_data, v):
+def generate_new_entry(type, index, pack, fileurl, filename, v):
     new_entry = {
-        "path": f"{DIRS[data[0]]}/{file_data[0]}",
+        "path": f"{DIRS[type]}/{filename}",
         "hashes": {
             "sha1": v["files"][0]["hashes"]["sha1"],
             "sha512": v["files"][0]["hashes"].get("sha512", ""),
         },
         "env": {"client": "required", "server": "required"},
-        "downloads": [file_data[1]],
+        "downloads": [fileurl],
         "fileSize": v["files"][0]["size"],
     }
-    data[1]["files"] = [
-        f for f in data[1]["files"] if f["path"].lower() != new_entry["path"].lower()
+    index["files"] = [
+        f for f in index["files"] if f["path"].lower() != new_entry["path"].lower()
     ]
 
-    data[1]["files"].append(new_entry)
+    index["files"].append(new_entry)
 
     save_json(
-        f"{get_mrpack(data[2])}/modrinth.index.json",
-        data[1],
+        f"{get_mrpack(pack)}/modrinth.index.json",
+        index,
     )
 
 
@@ -247,12 +243,8 @@ def get_depends(id) -> list:
 
 
 def download_depends(file: str, pack: str):
-    with ZipFile(file, "r") as z:
-        try:
-            data: dict = json.loads(z.read("fabric.mod.json"))
-            depends = get_depends(data["id"])
-        except Exception:
-            return
+    data = get_fabric_mod_json(file)
+    depends = get_depends(data["id"])
     if len(depends) == 0:
         return
 
@@ -285,60 +277,19 @@ def download_musthaves(pack=None):
     print(colored(f"downloaded must-haves in {round(time() - st, 2)}s", "green"))
 
 
-def update_mod(file_entry: dict, new_files: list, pack: str):
-    new_files.append(file_entry)
-    url = file_entry["downloads"][0]
-    pack_index = get_modrinth_index(get_mrpack(pack))
-    mc = get_mcversion(pack_index)
-    index = pack_index["files"].index(file_entry)
-    old_path = pack_index["files"][index]["path"]
+def get_fabric_mod_json(file) -> dict:
+    with ZipFile(file, "r") as z:
+        try:
+            return json.loads(z.read("fabric.mod.json"))
+        except Exception:
+            return {"id": "fabric-api"}
 
-    slug = url.split("/data/")[1].split("/")[0]
-    versions = get_versions(slug, mc)
-    latest_version = None
 
-    for v in versions:
-        condition = (
-            mc in v["game_versions"] and "fabric" in v["loaders"]
-            if url.split(".")[-1] == "jar"
-            else True
-        )
-        if condition:
-            latest_version = v
-            break
-    if latest_version is None:
-        return
-
-    files = latest_version["files"][0]
-    hashes = files["hashes"]
-    latest_sha1 = ["sha1"]
-    latest_sha512 = hashes["sha512"]
-    latest_path = f"{file_entry['path'].split('/')[0]}/{files['filename']}"
-    latest_url = files["url"]
-
-    if latest_url == url:
-        print(colored("already up-to-date, skipping", "magenta"))
-        return
-    print(colored(f"downloading {latest_path}...", "cyan"))
-
-    download_file(latest_url, f"{INST_DIR}/{pack}/{latest_path}")
-    download_depends(f"{INST_DIR}/{pack}/{latest_path}", pack)
-    try:
-        remove(f"{INST_DIR}/{pack}/{old_path}")
-    except Exception:
-        print(colored("failed to remove old file!", "red"))
-
-    new_files.remove(file_entry)
-
-    file_entry = {
-        "path": latest_path,
-        "downloads": [latest_url],
-        "hashes": {
-            "sha1": latest_sha1,
-            "sha512": latest_sha512,
-        },
-    }
-    new_files.append(file_entry)
+def update_mod(file: str, pack: str):
+    slug = get_fabric_mod_json(file)["id"]
+    download_from_modrinth(
+        "mod", pack, get_versions(slug, get_mcversion(get_modrinth_index(pack)))
+    )
 
 
 def get_latest_fabric(mc):
@@ -422,7 +373,6 @@ def install_modpack(ask_install_musthaves=False):
                     "yellow",
                 )
             )
-            sleep(0.02)
 
     launcher_data = load_json(f"{MC_DIR}/launcher_profiles.json")
 
