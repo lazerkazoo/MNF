@@ -6,8 +6,13 @@ from shutil import copy, copytree, make_archive, rmtree
 from subprocess import run
 from time import sleep, time
 
-import requests
-from termcolor import colored
+try:
+    from termcolor import colored
+except Exception:
+
+    def colored(text: str, color):
+        return text
+
 
 from scripts.constants import DOWNLOADS, INST_DIR, MC_DIR, MUSTHAVES
 from scripts.helper import (
@@ -32,8 +37,6 @@ from scripts.helper import (
     save_json,
     update_mod,
 )
-
-session = requests.session()
 
 
 def edit_musthaves(todo=None, to_edit=None):
@@ -242,6 +245,7 @@ def main():
             "change version of modpack": change_modpack_ver,
             "add must-haves to modpack": download_musthaves,
             "remove modpack": remove_modpack,
+            "back": main,
         },
         "remove mod from modpack": remove_mod_from_pack,
         "download modpack from file": download_modpack,

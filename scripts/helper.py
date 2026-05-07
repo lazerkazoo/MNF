@@ -7,12 +7,19 @@ from shutil import copy, copytree, rmtree
 from subprocess import check_output, run
 from sys import exit
 from time import time
+from urllib.parse import urlencode
 from uuid import uuid4
 from zipfile import ZipFile
 
-import requests
 from fuzzywuzzy import fuzz
-from termcolor import colored
+
+try:
+    from termcolor import colored
+except Exception:
+
+    def colored(text: str, color):
+        return text
+
 
 from scripts.constants import (
     DIRS,
@@ -20,8 +27,6 @@ from scripts.constants import (
     MC_DIR,
     must_haves,
 )
-
-session = requests.session()
 
 
 def save_json(file: str, js):
@@ -32,6 +37,12 @@ def save_json(file: str, js):
 def load_json(file: str):
     with open(file, "r") as f:
         return json.load(f)
+
+
+def get_request(url, params={}):
+    return json.loads(
+        check_output(["curl", "-X", "GET", "-s", f"{url}?{urlencode(params)}"])
+    )
 
 
 def download_file(url: str, dest: str):
@@ -138,15 +149,15 @@ def create_params(type, version=None, query=None):
 
 
 def get_hits(params):
-    response = session.get("https://api.modrinth.com/v2/search", params=params)
-    return response.json().get("hits", [])
+    response = get_request("https://api.modrinth.com/v2/search", params)
+    return response.get("hits", [])
 
 
 def get_versions(slug, mc=None, mod=True):
     url = f"https://api.modrinth.com/v2/project/{slug}/version"
     if mod:
         url = f"https://api.modrinth.com/v2/project/{slug}/version?game_versions=%5B%22{mc}%22%5D&loaders=%5B%22fabric%22%5D"
-    return json.loads(check_output(["curl", "-X", "GET", "-s", url]))
+    return get_request(url)
 
 
 def init_data(type=None, version=None, modpack=None):
@@ -233,9 +244,9 @@ def generate_new_entry(type, index, pack, fileurl, filename, v):
 
 
 def get_depends(id) -> list:
-    data = session.get(f"https://api.modrinth.com/v2/project/{id}/dependencies")
+    data = get_request(f"https://api.modrinth.com/v2/project/{id}/dependencies")
     try:
-        data = data.json()
+        data = data
         return data.get("projects", [])
     except Exception:
         pass
@@ -294,7 +305,7 @@ def update_mod(file: str, pack: str):
 
 def get_latest_fabric(mc):
     print(colored(f"getting latest fabric version for mc {mc}", "yellow"))
-    return session.get(f"https://meta.fabricmc.net/v2/versions/loader/{mc}").json()[0][
+    return get_request(f"https://meta.fabricmc.net/v2/versions/loader/{mc}")[0][
         "loader"
     ]["version"]
 
@@ -366,13 +377,8 @@ def install_modpack(ask_install_musthaves=False):
 
     with ThreadPoolExecutor(10) as e:
         for num, url in enumerate(downloads):
-            e.submit(
-                print,
-                colored(
-                    f"[{num + 1}/{len(downloads)}] downloading {url}",
-                    "yellow",
-                ),
-            )
+            dlstr = colored(f"[{num + 1}/{len(downloads)}] downloading {url}", "yellow")
+            e.submit(print, dlstr)
             e.submit(download_file, url, downloads[url])
 
     launcher_data = load_json(f"{MC_DIR}/launcher_profiles.json")

@@ -24,32 +24,29 @@ A command-line tool for managing Minecraft modpacks with Fabric, supporting cont
 - **[Java](https://www.java.com/en/download/)** - Required for installing Fabric
 - **[curl](https://curl.se/download.html)** - Required for downloading files (pre-installed on Linux)
 
+## Getting Started
 ### Python Dependencies
 
 Install the following Python packages:
-- `requests` - HTTP library for making web requests
-- `termcolor` - Terminal color output
+- `fuzzywuzzy` - `[can enter name]`
+- `termcolor` - Terminal color output (recommened)
 
-**Installation:**
-
+### Running the Program
 1. Open a terminal in the directory containing `main.py`
+#### With `pip` (built in to python)
 2. Run the following command:
    ```sh
    pip install .
    ```
-   (Python must be installed and available in your PATH)
-
----
-
-## Getting Started
-
-### Running the Application
-
-1. Open a terminal in the directory containing `main.py`
-2. Execute the following command:
+3. Execute the following command:
    ```sh
    python main.py
    ```
+#### With [uv](https://docs.astral.sh/uv/getting-started/installation/)
+2. Run the command:
+  ```sh
+  uv run main.py
+  ```
 
 The application will launch and display an interactive menu with available options.
 
