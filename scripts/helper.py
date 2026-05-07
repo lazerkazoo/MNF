@@ -366,13 +366,14 @@ def install_modpack(ask_install_musthaves=False):
 
     with ThreadPoolExecutor(10) as e:
         for num, url in enumerate(downloads):
-            e.submit(download_file, url, downloads[url])
-            print(
+            e.submit(
+                print,
                 colored(
                     f"[{num + 1}/{len(downloads)}] downloading {url}",
                     "yellow",
-                )
+                ),
             )
+            e.submit(download_file, url, downloads[url])
 
     launcher_data = load_json(f"{MC_DIR}/launcher_profiles.json")
 
