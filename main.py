@@ -17,6 +17,7 @@ except Exception:
 from scripts.constants import DOWNLOADS, INST_DIR, MC_DIR, MUSTHAVES
 from scripts.helper import (
     choose,
+    choose_hits,
     confirm,
     create_params,
     download_from_modrinth,
@@ -40,32 +41,27 @@ from scripts.helper import (
 
 
 def edit_musthaves(todo=None, to_edit=None):
+    def add():
+        choice = choose_hits(
+            get_hits(create_params(to_edit, query=input("search for -> ")))
+        )
+        file[to_edit].append(choice["slug"])
+
+    def remove():
+        choice = choose(list(file[to_edit]), to_edit)
+        if confirm(f"remove {choice}"):
+            file[to_edit].remove(choice)
+
     file = load_json(MUSTHAVES)
+    options = {"add": add, "remove": remove}
     if todo is None:
         todo = choose(["add", "remove"])
     if to_edit is None:
         to_edit = choose(["mod", "resourcepack", "shader"])
-    stuff = file[to_edit]
+    options[todo]()
 
-    if todo == "add":
-        query = input("what u want to add -> ")
-        params = create_params(to_edit, query=query)
-        hits = get_hits(params)
-
-        hit_titles = []
-        for h in hits:
-            hit_titles.append(h["title"])
-        choice = hits[hit_titles.index(choose(hit_titles))]
-
-        stuff.append(choice["slug"])
-    else:
-        choice = choose(list(stuff), to_edit)
-        if confirm(f"remove {choice}"):
-            stuff.remove(choice)
-
-    stuff = list(set(stuff))
-    stuff.sort()
-    file[to_edit] = stuff
+    file[to_edit] = list(set(file[to_edit]))
+    file[to_edit].sort()
     save_json(MUSTHAVES, file)
     if confirm("another"):
         edit_musthaves(todo, to_edit)
@@ -118,7 +114,7 @@ def update_modpack_mods(pack=None):
     if pack is None:
         pack = choose(get_modpacks(), "modpacks")
     mods = f"{INST_DIR}/{pack}/mods"
-    with ThreadPoolExecutor(10) as e:
+    with ThreadPoolExecutor(50) as e:
         for file in listdir(mods):
             e.submit(update_mod, f"{mods}/{file}", pack)
 
@@ -212,11 +208,7 @@ def search_modrinth(type=None, version=None, modpack=None):
         print(colored(f"no {data['type']}s found", "red"))
         return search_modrinth(data["type"], data["version"])
 
-    hit_titles = []
-    for h in hits:
-        hit_titles.append(h["title"])
-
-    choice = hits[hit_titles.index(choose(hit_titles, data["type"]))]
+    choice = choose_hits(hits)
 
     if not data["version"]:
         data["version"] = choose(choice["versions"])

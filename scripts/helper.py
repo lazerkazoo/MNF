@@ -47,7 +47,21 @@ def get_request(url, params={}):
 
 def download_file(url: str, dest: str):
     makedirs(dirname(dest), exist_ok=True)
-    run(["curl", url, "-o", dest, "-s"])
+    run(
+        [
+            "curl",
+            url,
+            "-o",
+            dest,
+            "--connect-timeout",
+            "10",
+            "--max-time",
+            "300",
+            "-s",
+            "-C",
+            "-",
+        ]
+    )
 
 
 def extract(file: str, extr_dir: str):
@@ -129,6 +143,11 @@ def choose(lst: list, stuff="stuff", check=False):
     return final
 
 
+def choose_hits(hits):
+    hit_titles = get_hit_titles(hits)
+    return hits[hit_titles.index(choose(hit_titles))]
+
+
 def create_params(type, version=None, query=None):
     if query is None:
         query = input("search modrinth -> ")
@@ -146,6 +165,13 @@ def create_params(type, version=None, query=None):
         base_facets.append([f"versions:{version}"])
 
     return {"query": query, "facets": json.dumps(base_facets)}
+
+
+def get_hit_titles(hits):
+    hit_titles = []
+    for h in hits:
+        hit_titles.append(h["title"])
+    return hit_titles
 
 
 def get_hits(params):
@@ -275,7 +301,7 @@ def download_musthaves(pack=None):
     mc = get_mcversion(pack)
     st = time()
 
-    with ThreadPoolExecutor(10) as e:
+    with ThreadPoolExecutor(50) as e:
         for type in must_haves:
             for slug in must_haves[type]:
                 e.submit(
@@ -375,7 +401,7 @@ def install_modpack(ask_install_musthaves=False):
 
     downloads = {i["downloads"][0]: f"{dir}/{i['path']}" for i in files}
 
-    with ThreadPoolExecutor(10) as e:
+    with ThreadPoolExecutor(50) as e:
         for num, url in enumerate(downloads):
             dlstr = colored(f"[{num + 1}/{len(downloads)}] downloading {url}", "yellow")
             e.submit(print, dlstr)

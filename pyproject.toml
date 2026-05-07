@@ -10,5 +10,6 @@ dependencies = [
     "fuzzywuzzy>=0.18.0",
     "idna==3.11",
     "python-levenshtein>=0.27.3",
+    "termcolor>=3.3.0",
     "urllib3==2.5.0",
 ]
